@@ -1,4 +1,4 @@
-use aqueous::{consumer::*, message::*};
+use aqueous::*;
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
