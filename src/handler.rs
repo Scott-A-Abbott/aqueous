@@ -2,15 +2,6 @@ pub trait Handler<T> {
     fn call(self, message_data: crate::MessageData);
 }
 
-impl<F> Handler<((),)> for F
-where
-    F: FnOnce() + 'static,
-{
-    fn call(self, _: crate::MessageData) {
-        self();
-    }
-}
-
 macro_rules! impl_handler {
     (
         [$($ty:ident),*], $last:ident
