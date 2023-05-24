@@ -19,8 +19,8 @@ macro_rules! impl_handler {
         impl<F, $($ty,)* $last> Handler<($($ty,)* $last,)> for F
         where
             F: FnOnce($($ty,)* $last,) + 'static,
-            $( $ty: FromConsumerState<Error = String>, )*
-            $last: FromConsumerState<Error = String>,
+            $( $ty: crate::FromConsumerState<Error = String>, )*
+            $last: crate::FromConsumerState<Error = String>,
         {
             fn call(self, message_data: crate::message::MessageData) {
                 $(
