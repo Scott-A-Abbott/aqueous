@@ -14,7 +14,7 @@ where
 {
     type Error = String;
     fn from_consumer_state(message_data: MessageData) -> Result<Self, Self::Error> {
-        if &message_data.message_type == &T::type_name() {
+        if &message_data.type_name == &T::type_name() {
             let message =
                 serde_json::from_str(&message_data.data).map_err(|err| err.to_string())?;
             Ok(Msg { data: message })
@@ -32,7 +32,7 @@ pub struct MessageData {
     pub id: String,
     pub stream_name: String,
     #[sqlx(rename = "type")]
-    pub message_type: String,
+    pub type_name: String,
     pub position: i64,
     pub global_position: i64,
     pub metadata: String,
