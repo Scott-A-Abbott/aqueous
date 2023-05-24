@@ -8,7 +8,7 @@ pub struct Metadata;
 pub struct Msg<T: Message> {
     pub data: T,
 }
-impl<T> crate::consumer::FromConsumerState for Msg<T>
+impl<T> crate::FromConsumerState for Msg<T>
 where
     for<'de> T: Message + serde::Deserialize<'de>,
 {

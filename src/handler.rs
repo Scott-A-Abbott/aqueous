@@ -1,12 +1,12 @@
 pub trait Handler<T> {
-    fn call(self, message_data: crate::message::MessageData);
+    fn call(self, message_data: crate::MessageData);
 }
 
 impl<F> Handler<((),)> for F
 where
     F: FnOnce() + 'static,
 {
-    fn call(self, _: crate::message::MessageData) {
+    fn call(self, _: crate::MessageData) {
         self();
     }
 }
@@ -22,7 +22,7 @@ macro_rules! impl_handler {
             $( $ty: crate::FromConsumerState<Error = String>, )*
             $last: crate::FromConsumerState<Error = String>,
         {
-            fn call(self, message_data: crate::message::MessageData) {
+            fn call(self, message_data: crate::MessageData) {
                 $(
                     let $ty = $ty::from_consumer_state(message_data.clone()).unwrap();
                 )*
