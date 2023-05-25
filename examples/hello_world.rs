@@ -22,6 +22,8 @@ pub async fn main() {
     let mut handler = IntoHandler::into_handler(|canceled: Msg<Canceled>| {
         let time = canceled.data.time;
         println!("Date and time of cancelation: {}", time);
+
+        println!("Debug of message: {:#?}", canceled);
     });
 
     for message_data in message_data_rows.into_iter() {
