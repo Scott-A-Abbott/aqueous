@@ -10,13 +10,6 @@ pub struct Consumer {
 }
 
 impl Consumer {
-    pub fn with_handler<Params>(handler: impl crate::Handler<Params>) {}
+    pub fn with_handler(handler: impl crate::Handler) {}
     pub fn with_resource<Res>(resource: Res) {}
-}
-
-// Consider borrowing from bevy to create a FunctionHandler struct that keeps track of it's own state
-pub trait FromConsumerState: Sized {
-    type Error;
-
-    fn from_consumer_state(message_data: crate::MessageData) -> Result<Self, Self::Error>;
 }

@@ -8,12 +8,13 @@ pub struct Metadata;
 pub struct Msg<T: Message> {
     pub data: T,
 }
-impl<T> crate::FromConsumerState for Msg<T>
+
+impl<T> crate::HandlerParam for Msg<T>
 where
     for<'de> T: Message + serde::Deserialize<'de>,
 {
     type Error = String;
-    fn from_consumer_state(message_data: MessageData) -> Result<Self, Self::Error> {
+    fn initialize(message_data: MessageData) -> Result<Self, Self::Error> {
         if &message_data.type_name == &T::type_name() {
             let message =
                 serde_json::from_str(&message_data.data).map_err(|err| err.to_string())?;
