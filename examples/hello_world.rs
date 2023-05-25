@@ -1,23 +1,11 @@
 use aqueous::*;
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgPoolOptions;
 use std::error::Error;
 use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect("postgres://message_store@localhost/message_store")
-        .await?;
-
-    let message_data_rows: Vec<MessageData> =
-        sqlx::query_as("SELECT * from get_stream_messages($1);")
-            .bind("someCategory-767276cf-3f15-46c4-a8ee-4cd1294f19b9")
-            .fetch_all(&pool)
-            .await?;
-
     let mut handler = IntoHandler::into_handler(|canceled: Msg<Canceled>| {
         let time = canceled.data.time;
         println!("Date and time of cancelation: {}", time);
@@ -25,7 +13,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         println!("Debug of message: {:#?}", canceled);
     });
 
-    for message_data in message_data_rows.into_iter() {
+    let message_store =
+        MessageStorePg::new("postgres://message_store@localhost/message_store", 5).await?;
+    let messages = message_store
+        .stream_messages("someCategory-767276cf-3f15-46c4-a8ee-4cd1294f19b9")
+        .await?
+        .get()
+        .await?;
+
+    for message_data in messages.into_iter() {
         handler.call(message_data);
     }
 
