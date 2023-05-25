@@ -7,7 +7,7 @@ use uuid::Uuid;
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
     let mut handler = IntoHandler::into_handler(|canceled: Msg<Canceled>| {
-        let time = canceled.data.time;
+        let time = canceled.time;
         println!("Date and time of cancelation: {}", time);
 
         println!("Debug of message: {:#?}", canceled);

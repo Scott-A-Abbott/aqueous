@@ -50,6 +50,13 @@ pub struct Msg<T: Message> {
     pub data: T,
     pub metadata: Metadata,
 }
+impl<T: Message> std::ops::Deref for Msg<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
+}
 
 impl<T> crate::HandlerParam for Msg<T>
 where
