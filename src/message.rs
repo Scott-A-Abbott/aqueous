@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
+use std::{error::Error, ops::Deref};
 
 // Should have a derive macro that can generate the message_type needed for MessageData
 pub trait Message: Sized {
@@ -50,7 +50,7 @@ pub struct Msg<T: Message> {
     pub data: T,
     pub metadata: Metadata,
 }
-impl<T: Message> std::ops::Deref for Msg<T> {
+impl<T: Message> Deref for Msg<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {

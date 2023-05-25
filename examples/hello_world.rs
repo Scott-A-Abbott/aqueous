@@ -6,32 +6,28 @@ use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let mut handler = IntoHandler::into_handler(|canceled: Msg<Canceled>| {
+    let handler = IntoHandler::into_handler(|canceled: Msg<Canceled>| {
         let time = canceled.time;
         println!("Date and time of cancelation: {}", time);
 
         println!("Debug of message: {:#?}", canceled);
     });
+    let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
 
     let message_store =
         MessageStorePg::new("postgres://message_store@localhost/message_store", 5).await?;
+
     let messages = message_store
-        .get_stream_messages("someCategory-767276cf-3f15-46c4-a8ee-4cd1294f19b9")
-        .await?
-        .execute()
-        .await?;
-
-    for message_data in messages.into_iter() {
-        handler.call(message_data);
-    }
-
-    let more_messages = message_store
         .get_category_messages("someCategory")
         .await?
         .execute()
         .await?;
 
-    println!("More messages count: {}", more_messages.len());
+    for message_data in messages.into_iter() {
+        if boxed_handler.handles_message(&message_data.type_name) {
+            boxed_handler.call(message_data);
+        }
+    }
 
     Ok(())
 }
