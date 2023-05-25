@@ -17,6 +17,10 @@ impl MessageStore<PgPool> {
         Ok(Self { store })
     }
 
+    pub fn from_pool(pool: PgPool) -> Self {
+        Self { store: pool }
+    }
+
     pub async fn get_stream_messages(
         &self,
         stream_name: &str,
