@@ -14,8 +14,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     });
     let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
 
+    const MAX_CONNECTIONS: u32 = 5;
     let message_store =
-        MessageStorePg::new("postgres://message_store@localhost/message_store", 5).await?;
+        MessageStorePg::new("postgres://message_store@localhost/message_store", MAX_CONNECTIONS).await?;
 
     let messages = message_store
         .get_category_messages("someCategory")
