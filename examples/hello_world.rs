@@ -25,6 +25,14 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         handler.call(message_data);
     }
 
+    let more_messages = message_store
+        .get_category_messages("someCategory")
+        .await?
+        .execute()
+        .await?;
+
+    println!("More messages count: {}", more_messages.len());
+
     Ok(())
 }
 
