@@ -20,7 +20,8 @@ pub async fn main() {
             .unwrap();
 
     for message_data in message_data_rows.into_iter() {
-        message_handler.call(message_data)
+        handle_canceled.call(message_data.clone());
+        handle_deposit.call(message_data);
     }
 }
 
@@ -37,7 +38,22 @@ impl Message for Canceled {
     }
 }
 
-fn message_handler(canceled: Msg<Canceled>) {
+fn handle_canceled(canceled: Msg<Canceled>) {
     let time = canceled.data.time;
     println!("Date and time of cancelation: {}", time);
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Deposit {
+    amount: i64
+}
+impl Message for Deposit {
+    fn type_name() -> String {
+        String::from("Deposit")
+    }
+}
+
+fn handle_deposit(deposit: Msg<Deposit>) {
+    let amount = deposit.data.amount;
+    println!("Amount to deposit: {}", amount);
 }

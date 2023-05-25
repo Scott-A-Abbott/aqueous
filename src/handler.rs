@@ -1,3 +1,11 @@
+// So far, this is based on the implementation of axum.
+// However, if I were to model it to be more like bevy, it would look something like:
+// struct FunctionHandler<Marker, F> where marker is the params (I think) and F is the function
+// trait Handler with an initialize and call method and be implemented for FunctionHandler
+// Trait IntoHandler that would be implemented for FnOnce(T,*) and convert to FunctionHandler
+// The Consumer would contain some sort of list of Box<dyn Handler> that would be initialized from
+// the consumer's state and message data
+
 pub trait Handler<T> {
     fn call(self, message_data: crate::MessageData);
 }
@@ -9,12 +17,15 @@ macro_rules! impl_handler {
         #[allow(non_snake_case, unused_mut)]
         impl<Fn, $($ty,)*> Handler<($($ty,)*)> for Fn
         where
-            Fn: FnOnce($($ty,)*) + 'static,
+            Fn: FnOnce($($ty,)*),
             $( $ty: crate::FromConsumerState<Error = String>, )*
         {
             fn call(self, message_data: crate::MessageData) {
                 $(
-                    let $ty = $ty::from_consumer_state(message_data.clone()).unwrap();
+                    let $ty = match $ty::from_consumer_state(message_data.clone()) {
+                        Ok(value) => value,
+                        Err(_) => { return; }
+                    };
                 )*
                 self($($ty,)*);
             }
