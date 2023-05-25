@@ -32,12 +32,12 @@ pub trait IntoHandler<Marker>: Sized {
 
 impl<T1, F> IntoHandler<T1> for F
 where
-    F: FnMut(T1)
+    F: FnMut(T1),
 {
     fn into_handler(this: Self) -> FunctionHandler<T1, Self> {
         FunctionHandler {
             func: this,
-            marker: Default::default()
+            marker: Default::default(),
         }
     }
 }

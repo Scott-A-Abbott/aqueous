@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use chrono::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::error::Error;
 
 // Should have a derive macro that can generate the message_type needed for MessageData
 pub trait Message: Sized {
@@ -27,6 +28,7 @@ pub struct Metadata {
     pub reply_stream_name: Option<String>,
     pub time: NaiveDateTime,
 }
+
 impl Metadata {
     pub fn new(message_data: MessageData, raw_metadata: RawMetadata) -> Self {
         Metadata {
@@ -53,22 +55,18 @@ impl<T> crate::HandlerParam for Msg<T>
 where
     for<'de> T: Message + serde::Deserialize<'de>,
 {
-    type Error = String;
+    type Error = Box<dyn Error>;
+
     fn initialize(message_data: MessageData) -> Result<Self, Self::Error> {
         if &message_data.type_name == &T::type_name() {
-            let data =
-                serde_json::from_str(&message_data.data).map_err(|err| err.to_string())?;
-            let raw_metadata =
-                serde_json::from_str(&message_data.metadata).map_err(|err| err.to_string())?;
+            let data = serde_json::from_str(&message_data.data)?;
+            let raw_metadata = serde_json::from_str(&message_data.metadata)?;
 
             let metadata = Metadata::new(message_data, raw_metadata);
 
             Ok(Msg { data, metadata })
         } else {
-            Err(format!(
-                "Message Data is not an instance of {}",
-                T::type_name()
-            ))
+            Err(format!("Message Data is not an instance of {}", T::type_name()).into())
         }
     }
 }
