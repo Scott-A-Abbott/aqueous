@@ -17,16 +17,16 @@ impl MessageStore<PgPool> {
         Ok(Self { store })
     }
 
-    pub async fn stream_messages(
+    pub async fn get_stream_messages(
         &self,
         stream_name: &str,
-    ) -> Result<StreamMessages<sqlx::pool::PoolConnection<Postgres>>, Box<dyn Error>> {
+    ) -> Result<GetStreamMessages<sqlx::pool::PoolConnection<Postgres>>, Box<dyn Error>> {
         let conn = self.store.acquire().await?;
-        Ok(StreamMessages::new(conn, stream_name))
+        Ok(GetStreamMessages::new(conn, stream_name))
     }
 }
 
-pub struct StreamMessages<Conn> {
+pub struct GetStreamMessages<Conn> {
     conn: Conn,
     stream_name: String,
     position: Option<i64>,
@@ -34,7 +34,7 @@ pub struct StreamMessages<Conn> {
     condition: Option<String>,
 }
 
-impl<Conn> StreamMessages<Conn> {
+impl<Conn> GetStreamMessages<Conn> {
     pub fn new(conn: Conn, stream_name: &str) -> Self {
         Self {
             conn,
@@ -61,8 +61,8 @@ impl<Conn> StreamMessages<Conn> {
     }
 }
 
-impl StreamMessages<sqlx::pool::PoolConnection<Postgres>> {
-    pub async fn get(&mut self) -> Result<Vec<MessageData>, Box<dyn Error>> {
+impl GetStreamMessages<sqlx::pool::PoolConnection<Postgres>> {
+    pub async fn execute(&mut self) -> Result<Vec<MessageData>, Box<dyn Error>> {
         sqlx::query_as(
             "SELECT * from get_stream_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar);",
         )

@@ -16,9 +16,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let message_store =
         MessageStorePg::new("postgres://message_store@localhost/message_store", 5).await?;
     let messages = message_store
-        .stream_messages("someCategory-767276cf-3f15-46c4-a8ee-4cd1294f19b9")
+        .get_stream_messages("someCategory-767276cf-3f15-46c4-a8ee-4cd1294f19b9")
         .await?
-        .get()
+        .execute()
         .await?;
 
     for message_data in messages.into_iter() {
