@@ -1,35 +1,8 @@
-# UsefulObject
+- Is there a use case for state dependent dependencies?
+  - In other words, a dependency that should persist between handler invocations
+  - Would they need to be differentiated from others?
+  - Receiving a DB connection from a pool, for example, maybe shouldn't be persisted; to free up the connection
 
-- Maybe a useful object with substitutes can be implemented with an enum
-- Maybe this has to be something that is done by the developer, not by the library
-  - The difficulty comes in the useful object enum having the same interface as the primary object and substitute
-
-```rust
-    trait Write {
-        type Error;
-        fn write_messages() -> Result<(), Self::Error> {}
-    }
-    trait Substitute {
-        type Substitute;
-    }
-
-    enum Writer 
-    where
-        T: Substitute + Write,
-        T::Substitute: Write,
-    {
-        Useful(T),
-        Substitute(T::Substitute)
-    }
-
-    impl Write for PgConnection { .. }
-    impl Write for PgSubstitute { .. }
-    
-    impl Dependency for PgConnection {
-        type Substitute = PgSubstitute;
-    };
-
-    impl Write for Writer
-
-    let writer = Writer<PgConnection>;
-```
+- How should `Consumer` state be handled?
+  - I imagine there would be state that it has by design, such as the message store
+  - User defined state would be used for shared configuration/dependencies of handlers
