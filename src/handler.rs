@@ -46,7 +46,7 @@ where
         FunctionHandler {
             func: this,
             marker: Default::default(),
-            message_type: Msg::type_name(),
+            message_type: Msg::TYPE_NAME.to_owned(),
         }
     }
 }

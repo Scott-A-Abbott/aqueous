@@ -4,7 +4,7 @@ use std::{error::Error, ops::Deref};
 
 // Should have a derive macro that can generate the message_type needed for MessageData
 pub trait Message: Sized {
-    fn type_name() -> String;
+    const TYPE_NAME: &'static str;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -65,7 +65,7 @@ where
     type Error = Box<dyn Error>;
 
     fn initialize(message_data: MessageData) -> Result<Self, Self::Error> {
-        if &message_data.type_name == &T::type_name() {
+        if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;
             let raw_metadata = serde_json::from_str(&message_data.metadata)?;
 
@@ -73,7 +73,7 @@ where
 
             Ok(Msg { data, metadata })
         } else {
-            Err(format!("Message Data is not an instance of {}", T::type_name()).into())
+            Err(format!("Message Data is not an instance of {}", T::TYPE_NAME).into())
         }
     }
 }

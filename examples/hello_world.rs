@@ -9,10 +9,11 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let handler = IntoHandler::into_handler(|canceled: Msg<Canceled>| {
         let time = canceled.time;
         println!("Date and time of cancelation: {}", time);
-
-        println!("Debug of message: {:#?}", canceled);
     });
     let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
+
+    let mut handler2 = IntoHandler::into_handler(handle_message::<Canceled>);
+    let mut boxed_handler2: Box<dyn Handler> = Box::new(handler2);
 
     const MAX_CONNECTIONS: u32 = 5;
     let message_store =
@@ -26,7 +27,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     for message_data in messages.into_iter() {
         if boxed_handler.handles_message(&message_data.type_name) {
-            boxed_handler.call(message_data);
+            boxed_handler.call(message_data.clone());
+            boxed_handler2.call(message_data);
         }
     }
 
@@ -41,9 +43,7 @@ struct Canceled {
     client_id: Uuid,
 }
 impl Message for Canceled {
-    fn type_name() -> String {
-        String::from("Canceled")
-    }
+    const TYPE_NAME: &'static str = "Canceled";
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -51,12 +51,9 @@ struct Deposit {
     amount: i64,
 }
 impl Message for Deposit {
-    fn type_name() -> String {
-        String::from("Deposit")
-    }
+    const TYPE_NAME: &'static str = "Deposit";
 }
 
-fn handle_deposit(deposit: Msg<Deposit>) {
-    let amount = deposit.data.amount;
-    println!("Amount to deposit: {}", amount);
+fn handle_message<M: Message + std::fmt::Debug>(message: Msg<M>) {
+    println!("Message: {:#?}", message)
 }
