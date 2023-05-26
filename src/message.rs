@@ -64,7 +64,10 @@ where
 {
     type Error = Box<dyn Error>;
 
-    fn initialize(message_data: MessageData) -> Result<Self, Self::Error> {
+    fn initialize(
+        message_data: MessageData,
+        _: &mut crate::HandlerDependencies,
+    ) -> Result<Self, Self::Error> {
         if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;
             let raw_metadata = serde_json::from_str(&message_data.metadata)?;

@@ -6,18 +6,25 @@ use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let handler = IntoHandler::into_handler(|canceled: Msg<Canceled>| {
-        let time = canceled.time;
-        println!("Date and time of cancelation: {}", time);
-    });
+    let handler =
+        IntoHandler::into_handler(|canceled: Msg<Canceled>, mut some_dep: Dep<SomeDep>| {
+            let time = canceled.time;
+            some_dep.add(5);
+
+            println!("Some dep: {:?}", some_dep.value());
+            println!("Date and time of cancelation: {}", time);
+        });
     let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
 
-    let mut handler2 = IntoHandler::into_handler(handle_message::<Canceled>);
+    let handler2 = IntoHandler::into_handler(handle_message::<Canceled>);
     let mut boxed_handler2: Box<dyn Handler> = Box::new(handler2);
 
     const MAX_CONNECTIONS: u32 = 5;
-    let message_store =
-        MessageStorePg::new("postgres://message_store@localhost/message_store", MAX_CONNECTIONS).await?;
+    let message_store = MessageStorePg::new(
+        "postgres://message_store@localhost/message_store",
+        MAX_CONNECTIONS,
+    )
+    .await?;
 
     let messages = message_store
         .get_category_messages("someCategory")
@@ -28,6 +35,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     for message_data in messages.into_iter() {
         if boxed_handler.handles_message(&message_data.type_name) {
             boxed_handler.call(message_data.clone());
+            boxed_handler.call(message_data.clone());
+
+            println!("");
+
             boxed_handler2.call(message_data);
         }
     }
@@ -46,12 +57,21 @@ impl Message for Canceled {
     const TYPE_NAME: &'static str = "Canceled";
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Deposit {
-    amount: i64,
+#[derive(Debug)]
+struct SomeDep(i32);
+impl SomeDep {
+    fn add(&mut self, x: i32) {
+        self.0 += x;
+    }
+    fn value(&self) -> i32 {
+        self.0
+    }
 }
-impl Message for Deposit {
-    const TYPE_NAME: &'static str = "Deposit";
+impl HandlerParam for SomeDep {
+    type Error = Box<dyn Error>;
+    fn initialize(_: MessageData, _: &mut HandlerDependencies) -> Result<Self, Self::Error> {
+        Ok(SomeDep(10))
+    }
 }
 
 fn handle_message<M: Message + std::fmt::Debug>(message: Msg<M>) {
