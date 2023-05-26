@@ -91,12 +91,12 @@ impl GetStreamMessages<sqlx::pool::PoolConnection<Postgres>> {
 pub struct GetCategoryMessages<Conn> {
     conn: Conn,
     category_name: String,
-    position: Option<i64>,              // bigint DEFAULT 0,
-    batch_size: Option<i64>,            // bigint DEFAULT 1000,
-    correlation: Option<String>,        // varchar DEFAULT NULL,
-    consumer_group_member: Option<i64>, // bigint DEFAULT NULL,
-    consumer_group_size: Option<i64>,   // bigint DEFAULT NULL,
-    condition: Option<String>,          // varchar DEFAULT NULL
+    position: Option<i64>,
+    batch_size: Option<i64>,
+    correlation: Option<String>,
+    consumer_group_member: Option<i64>,
+    consumer_group_size: Option<i64>,
+    condition: Option<String>,
 }
 
 impl<Conn> GetCategoryMessages<Conn> {
