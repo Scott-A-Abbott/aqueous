@@ -85,7 +85,7 @@ where
 
     fn build(
         message_data: MessageData,
-        _: &mut crate::HandlerRetainments,
+        _: &mut crate::HandlerRetainers,
     ) -> Result<Self, Self::Error> {
         if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;

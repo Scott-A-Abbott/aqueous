@@ -88,7 +88,7 @@ impl SomeParam {
 }
 impl HandlerParam for SomeParam {
     type Error = Box<dyn Error>;
-    fn build(_: MessageData, _: &mut HandlerRetainments) -> Result<Self, Self::Error> {
+    fn build(_: MessageData, _: &mut HandlerRetainers) -> Result<Self, Self::Error> {
         Ok(Self(10))
     }
 }

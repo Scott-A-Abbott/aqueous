@@ -18,29 +18,29 @@ pub trait HandlerParam: Sized {
 
     fn build(
         message_data: crate::MessageData,
-        retainments: &mut HandlerRetainments,
+        retainers: &mut HandlerRetainers,
     ) -> Result<Self, Self::Error>;
 }
 
 #[derive(Default)]
-pub struct HandlerRetainments {
+pub struct HandlerRetainers {
     inner: HashMap<TypeId, Box<dyn Any>>,
 }
-impl HandlerRetainments {
+impl HandlerRetainers {
     pub fn insert<T: 'static>(&mut self, retain: T) {
         let type_id = TypeId::of::<T>();
-        let retainment = Retain::new(retain);
-        let boxed_retainment: Box<dyn Any> = Box::new(retainment);
-        self.inner.insert(type_id, boxed_retainment);
+        let retainer = Retain::new(retain);
+        let boxed_retainer: Box<dyn Any> = Box::new(retainer);
+        self.inner.insert(type_id, boxed_retainer);
     }
 
     pub fn get<T: 'static>(&mut self) -> Option<Retain<T>> {
         let type_id = TypeId::of::<T>();
         let boxed_any = self.inner.remove(&type_id)?;
-        let retainment: Retain<T> = *boxed_any.downcast().ok()?;
+        let retainer: Retain<T> = *boxed_any.downcast().ok()?;
 
-        self.inner.insert(type_id, Box::new(retainment.clone()));
-        Some(retainment)
+        self.inner.insert(type_id, Box::new(retainer.clone()));
+        Some(retainer)
     }
 
     pub fn contains<T: 'static>(&self) -> bool {
@@ -79,18 +79,18 @@ impl<T: HandlerParam + 'static> HandlerParam for Retain<T> {
 
     fn build(
         message_data: crate::MessageData,
-        retainments: &mut HandlerRetainments,
+        retainers: &mut HandlerRetainers,
     ) -> Result<Self, Self::Error> {
-        if retainments.contains::<T>() {
-            let retainment = retainments.get::<T>().unwrap();
-            Ok(retainment)
+        if retainers.contains::<T>() {
+            let retainer = retainers.get::<T>().unwrap();
+            Ok(retainer)
         } else {
-            let retainment = T::build(message_data, retainments).ok().unwrap();
+            let retainer = T::build(message_data, retainers).ok().unwrap();
 
-            retainments.insert(retainment);
-            let retainment = retainments.get::<T>().unwrap();
+            retainers.insert(retainer);
+            let retainer = retainers.get::<T>().unwrap();
 
-            Ok(retainment)
+            Ok(retainer)
         }
     }
 }
@@ -99,7 +99,7 @@ pub struct FunctionHandler<Marker, F> {
     func: F,
     marker: PhantomData<Marker>,
     message_type: String,
-    retainments: HandlerRetainments,
+    retainers: HandlerRetainers,
 }
 
 impl<T1, F> Handler for FunctionHandler<(T1,), F>
@@ -108,7 +108,7 @@ where
     F: FnMut(T1),
 {
     fn call(&mut self, message_data: crate::MessageData) {
-        let t1 = T1::build(message_data, &mut self.retainments).unwrap();
+        let t1 = T1::build(message_data, &mut self.retainers).unwrap();
         (self.func)(t1);
     }
 
@@ -124,8 +124,8 @@ where
     F: FnMut(T1, T2),
 {
     fn call(&mut self, message_data: crate::MessageData) {
-        let t1 = T1::build(message_data.clone(), &mut self.retainments).unwrap();
-        let t2 = T2::build(message_data, &mut self.retainments).unwrap();
+        let t1 = T1::build(message_data.clone(), &mut self.retainers).unwrap();
+        let t2 = T2::build(message_data, &mut self.retainers).unwrap();
         (self.func)(t1, t2);
     }
 
@@ -149,7 +149,7 @@ where
             func: this,
             marker: Default::default(),
             message_type: Msg::TYPE_NAME.to_owned(),
-            retainments: Default::default(),
+            retainers: Default::default(),
         }
     }
 }
@@ -165,7 +165,7 @@ where
             func: this,
             marker: Default::default(),
             message_type: Msg::TYPE_NAME.to_owned(),
-            retainments: Default::default(),
+            retainers: Default::default(),
         }
     }
 }
