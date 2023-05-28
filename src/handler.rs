@@ -16,7 +16,7 @@ pub trait Handler {
 pub trait HandlerParam: Sized {
     type Error: std::fmt::Debug;
 
-    fn initialize(
+    fn build(
         message_data: crate::MessageData,
         dependencies: &mut HandlerDependencies,
     ) -> Result<Self, Self::Error>;
@@ -77,7 +77,7 @@ impl<T> DerefMut for Dep<T> {
 impl<T: HandlerParam + 'static> HandlerParam for Dep<T> {
     type Error = Box<dyn Error>;
 
-    fn initialize(
+    fn build(
         message_data: crate::MessageData,
         dependencies: &mut HandlerDependencies,
     ) -> Result<Self, Self::Error> {
@@ -85,7 +85,7 @@ impl<T: HandlerParam + 'static> HandlerParam for Dep<T> {
             let dep = dependencies.get::<T>().unwrap();
             Ok(dep)
         } else {
-            let dependency = T::initialize(message_data, dependencies).ok().unwrap();
+            let dependency = T::build(message_data, dependencies).ok().unwrap();
 
             dependencies.insert(dependency);
             let dep = dependencies.get::<T>().unwrap();
@@ -108,7 +108,7 @@ where
     F: FnMut(T1),
 {
     fn call(&mut self, message_data: crate::MessageData) {
-        let t1 = T1::initialize(message_data, &mut self.dependencies).unwrap();
+        let t1 = T1::build(message_data, &mut self.dependencies).unwrap();
         (self.func)(t1);
     }
 
@@ -124,8 +124,8 @@ where
     F: FnMut(T1, T2),
 {
     fn call(&mut self, message_data: crate::MessageData) {
-        let t1 = T1::initialize(message_data.clone(), &mut self.dependencies).unwrap();
-        let t2 = T2::initialize(message_data, &mut self.dependencies).unwrap();
+        let t1 = T1::build(message_data.clone(), &mut self.dependencies).unwrap();
+        let t2 = T2::build(message_data, &mut self.dependencies).unwrap();
         (self.func)(t1, t2);
     }
 

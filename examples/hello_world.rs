@@ -87,7 +87,7 @@ impl SomeDep {
 }
 impl HandlerParam for SomeDep {
     type Error = Box<dyn Error>;
-    fn initialize(_: MessageData, _: &mut HandlerDependencies) -> Result<Self, Self::Error> {
+    fn build(_: MessageData, _: &mut HandlerDependencies) -> Result<Self, Self::Error> {
         Ok(SomeDep(10))
     }
 }

@@ -83,7 +83,7 @@ where
 {
     type Error = Box<dyn Error>;
 
-    fn initialize(
+    fn build(
         message_data: MessageData,
         _: &mut crate::HandlerDependencies,
     ) -> Result<Self, Self::Error> {
