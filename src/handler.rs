@@ -18,29 +18,29 @@ pub trait HandlerParam: Sized {
 
     fn build(
         message_data: crate::MessageData,
-        dependencies: &mut HandlerDependencies,
+        retainments: &mut HandlerRetainments,
     ) -> Result<Self, Self::Error>;
 }
 
 #[derive(Default)]
-pub struct HandlerDependencies {
+pub struct HandlerRetainments {
     inner: HashMap<TypeId, Box<dyn Any>>,
 }
-impl HandlerDependencies {
-    pub fn insert<T: 'static>(&mut self, dependency: T) {
+impl HandlerRetainments {
+    pub fn insert<T: 'static>(&mut self, retain: T) {
         let type_id = TypeId::of::<T>();
-        let dep = Dep::new(dependency);
-        let boxed_dep: Box<dyn Any> = Box::new(dep);
-        self.inner.insert(type_id, boxed_dep);
+        let retainment = Retain::new(retain);
+        let boxed_retainment: Box<dyn Any> = Box::new(retainment);
+        self.inner.insert(type_id, boxed_retainment);
     }
 
-    pub fn get<T: 'static>(&mut self) -> Option<Dep<T>> {
+    pub fn get<T: 'static>(&mut self) -> Option<Retain<T>> {
         let type_id = TypeId::of::<T>();
         let boxed_any = self.inner.remove(&type_id)?;
-        let dependency: Dep<T> = *boxed_any.downcast().ok()?;
+        let retainment: Retain<T> = *boxed_any.downcast().ok()?;
 
-        self.inner.insert(type_id, Box::new(dependency.clone()));
-        Some(dependency)
+        self.inner.insert(type_id, Box::new(retainment.clone()));
+        Some(retainment)
     }
 
     pub fn contains<T: 'static>(&self) -> bool {
@@ -49,48 +49,48 @@ impl HandlerDependencies {
     }
 }
 
-pub struct Dep<T>(Rc<UnsafeCell<T>>);
-impl<T> Dep<T> {
-    pub fn new(dependency: T) -> Dep<T> {
-        let cell = UnsafeCell::new(dependency);
+pub struct Retain<T>(Rc<UnsafeCell<T>>);
+impl<T> Retain<T> {
+    pub fn new(retain: T) -> Retain<T> {
+        let cell = UnsafeCell::new(retain);
         let rc = Rc::new(cell);
-        Dep(rc)
+        Self(rc)
     }
 }
-impl<T> Clone for Dep<T> {
+impl<T> Clone for Retain<T> {
     fn clone(&self) -> Self {
         let rc = self.0.clone();
-        Dep(rc)
+        Self(rc)
     }
 }
-impl<T> Deref for Dep<T> {
+impl<T> Deref for Retain<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         unsafe { &*self.0.get() }
     }
 }
-impl<T> DerefMut for Dep<T> {
+impl<T> DerefMut for Retain<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { &mut *self.0.get() }
     }
 }
-impl<T: HandlerParam + 'static> HandlerParam for Dep<T> {
+impl<T: HandlerParam + 'static> HandlerParam for Retain<T> {
     type Error = Box<dyn Error>;
 
     fn build(
         message_data: crate::MessageData,
-        dependencies: &mut HandlerDependencies,
+        retainments: &mut HandlerRetainments,
     ) -> Result<Self, Self::Error> {
-        if dependencies.contains::<T>() {
-            let dep = dependencies.get::<T>().unwrap();
-            Ok(dep)
+        if retainments.contains::<T>() {
+            let retainment = retainments.get::<T>().unwrap();
+            Ok(retainment)
         } else {
-            let dependency = T::build(message_data, dependencies).ok().unwrap();
+            let retainment = T::build(message_data, retainments).ok().unwrap();
 
-            dependencies.insert(dependency);
-            let dep = dependencies.get::<T>().unwrap();
+            retainments.insert(retainment);
+            let retainment = retainments.get::<T>().unwrap();
 
-            Ok(dep)
+            Ok(retainment)
         }
     }
 }
@@ -99,7 +99,7 @@ pub struct FunctionHandler<Marker, F> {
     func: F,
     marker: PhantomData<Marker>,
     message_type: String,
-    dependencies: HandlerDependencies,
+    retainments: HandlerRetainments,
 }
 
 impl<T1, F> Handler for FunctionHandler<(T1,), F>
@@ -108,7 +108,7 @@ where
     F: FnMut(T1),
 {
     fn call(&mut self, message_data: crate::MessageData) {
-        let t1 = T1::build(message_data, &mut self.dependencies).unwrap();
+        let t1 = T1::build(message_data, &mut self.retainments).unwrap();
         (self.func)(t1);
     }
 
@@ -124,8 +124,8 @@ where
     F: FnMut(T1, T2),
 {
     fn call(&mut self, message_data: crate::MessageData) {
-        let t1 = T1::build(message_data.clone(), &mut self.dependencies).unwrap();
-        let t2 = T2::build(message_data, &mut self.dependencies).unwrap();
+        let t1 = T1::build(message_data.clone(), &mut self.retainments).unwrap();
+        let t2 = T2::build(message_data, &mut self.retainments).unwrap();
         (self.func)(t1, t2);
     }
 
@@ -149,7 +149,7 @@ where
             func: this,
             marker: Default::default(),
             message_type: Msg::TYPE_NAME.to_owned(),
-            dependencies: Default::default(),
+            retainments: Default::default(),
         }
     }
 }
@@ -165,13 +165,13 @@ where
             func: this,
             marker: Default::default(),
             message_type: Msg::TYPE_NAME.to_owned(),
-            dependencies: Default::default(),
+            retainments: Default::default(),
         }
     }
 }
 // #[rustfmt::skip]
 // macro_rules! for_all_tuples {
-//     ($macro_name:ident) => {
+//     ($maro_name:ident) => {
 //         $macro_name!(T1);
 //         $macro_name!(T1, T2);
 //         $macro_name!(T1, T2, T3);
