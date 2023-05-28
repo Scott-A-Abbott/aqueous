@@ -6,14 +6,15 @@ use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let handler =
-        IntoHandler::into_handler(|canceled: Msg<Canceled>, mut some_param: Retain<SomeParam>| {
+    let handler = IntoHandler::into_handler(
+        |canceled: Msg<Canceled>, mut some_param: Retain<SomeParam>| {
             let time = canceled.time;
             some_param.add(5);
 
             println!("Some param: {:?}", some_param.value());
             println!("Date and time of cancelation: {}", time);
-        });
+        },
+    );
     let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
 
     let handler2 = IntoHandler::into_handler(handle_message::<Canceled>);
@@ -88,7 +89,7 @@ impl SomeParam {
 }
 impl HandlerParam for SomeParam {
     type Error = Box<dyn Error>;
-    fn build(_: MessageData, _: &mut HandlerRetainers) -> Result<Self, Self::Error> {
+    fn build(_: MessageData, _: &HandlerRetainers) -> Result<Self, Self::Error> {
         Ok(Self(10))
     }
 }

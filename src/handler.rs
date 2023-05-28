@@ -1,6 +1,6 @@
 use std::{
     any::{Any, TypeId},
-    cell::UnsafeCell,
+    cell::{RefCell, UnsafeCell},
     collections::HashMap,
     error::Error,
     marker::PhantomData,
@@ -18,34 +18,40 @@ pub trait HandlerParam: Sized {
 
     fn build(
         message_data: crate::MessageData,
-        retainers: &mut HandlerRetainers,
+        retainers: &HandlerRetainers,
     ) -> Result<Self, Self::Error>;
 }
 
 #[derive(Default)]
-pub struct HandlerRetainers {
-    inner: HashMap<TypeId, Box<dyn Any>>,
-}
+pub struct HandlerRetainers(RefCell<HashMap<TypeId, Box<dyn Any>>>);
 impl HandlerRetainers {
-    pub fn insert<T: 'static>(&mut self, retain: T) {
-        let type_id = TypeId::of::<T>();
+    pub(crate) fn insert<T: 'static>(&self, retain: T) {
         let retainer = Retain::new(retain);
         let boxed_retainer: Box<dyn Any> = Box::new(retainer);
-        self.inner.insert(type_id, boxed_retainer);
+        let type_id = TypeId::of::<T>();
+
+        let mut retainers = self.0.take();
+        retainers.insert(type_id, boxed_retainer);
+
+        self.0.replace(retainers);
     }
 
-    pub fn get<T: 'static>(&mut self) -> Option<Retain<T>> {
+    pub fn get<T: 'static>(&self) -> Option<Retain<T>> {
+        let mut retainers = self.0.take();
+
         let type_id = TypeId::of::<T>();
-        let boxed_any = self.inner.remove(&type_id)?;
+        let boxed_any = retainers.remove(&type_id)?;
         let retainer: Retain<T> = *boxed_any.downcast().ok()?;
 
-        self.inner.insert(type_id, Box::new(retainer.clone()));
+        retainers.insert(type_id, Box::new(retainer.clone()));
+        self.0.replace(retainers);
+
         Some(retainer)
     }
 
     pub fn contains<T: 'static>(&self) -> bool {
         let type_id = TypeId::of::<T>();
-        self.inner.contains_key(&type_id)
+        self.0.borrow().contains_key(&type_id)
     }
 }
 
@@ -79,7 +85,7 @@ impl<T: HandlerParam + 'static> HandlerParam for Retain<T> {
 
     fn build(
         message_data: crate::MessageData,
-        retainers: &mut HandlerRetainers,
+        retainers: &HandlerRetainers,
     ) -> Result<Self, Self::Error> {
         if retainers.contains::<T>() {
             let retainer = retainers.get::<T>().unwrap();
