@@ -237,7 +237,7 @@ impl WriteMessages<sqlx::pool::PoolConnection<Postgres>> {
                 .fetch_one(&mut *transaction)
                 .await?;
 
-            self.expected_version = self.expected_version.map(|version| version + 1 );
+            self.expected_version = self.expected_version.map(|version| version + 1);
         }
 
         transaction.commit().await?;

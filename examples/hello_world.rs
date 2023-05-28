@@ -53,7 +53,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         metadata: None,
     };
 
-    let last_position = message_store.write_messages("someAccountCategory-745D49F3-CB89-4EE9-958D-1BA63E35A061")
+    let last_position = message_store
+        .write_messages("someAccountCategory-745D49F3-CB89-4EE9-958D-1BA63E35A061")
         .await?
         .with_message(payload)
         .execute()
