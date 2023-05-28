@@ -36,6 +36,14 @@ impl MessageStore<PgPool> {
         let conn = self.store.acquire().await?;
         Ok(GetCategoryMessages::new(conn, category_name))
     }
+
+    pub async fn write_messages(
+        &self,
+        stream_name: &str,
+    ) -> Result<WriteMessages<PoolConnection<Postgres>>, Box<dyn Error>> {
+        let conn = self.store.acquire().await?;
+        Ok(WriteMessages::new(conn, stream_name))
+    }
 }
 
 pub struct GetStreamMessages<Conn> {
@@ -159,5 +167,81 @@ impl GetCategoryMessages<sqlx::pool::PoolConnection<Postgres>> {
         .fetch_all(&mut self.conn)
         .await
         .map_err(|e| e.into())
+    }
+}
+
+pub struct WriteMessages<Conn> {
+    conn: Conn,
+    stream_name: String,
+    expected_version: Option<i64>,
+    messages: Vec<crate::MessagePayload>,
+}
+
+impl<Conn> WriteMessages<Conn> {
+    pub fn new(conn: Conn, stream_name: &str) -> Self {
+        Self {
+            conn,
+            stream_name: stream_name.to_owned(),
+            expected_version: None,
+            messages: Vec::new(),
+        }
+    }
+
+    pub fn expected_version(mut self, expected_version: i64) -> Self {
+        self.expected_version = Some(expected_version);
+        self
+    }
+
+    pub fn with_message(mut self, message: impl Into<crate::MessagePayload>) -> Self {
+        self.messages.push(message.into());
+        self
+    }
+
+    pub fn with_batch<T>(mut self, batch: impl AsRef<[T]>) -> Self
+    where
+        T: Clone + Into<crate::MessagePayload>,
+    {
+        let mut payloads = batch
+            .as_ref()
+            .iter()
+            .map(|msg| msg.clone().into())
+            .collect::<Vec<crate::MessagePayload>>();
+
+        self.messages.append(&mut payloads);
+        self
+    }
+}
+
+impl WriteMessages<sqlx::pool::PoolConnection<Postgres>> {
+    pub async fn execute(&mut self) -> Result<i64, Box<dyn Error>> {
+        use sqlx::Acquire;
+
+        #[derive(sqlx::FromRow)]
+        struct LastPosition(i64);
+        let mut last_position = LastPosition(-1);
+
+        let mut transaction = self.conn.begin().await?;
+
+        for message in self.messages.iter() {
+            let id = uuid::Uuid::new_v4().to_string();
+
+            last_position = sqlx::query_as(
+                "SELECT write_message($1::varchar, $2::varchar, $3::varchar, $4::jsonb, $5::jsonb, $6::bigint);",
+            )
+                .bind(id)
+                .bind(&self.stream_name)
+                .bind(&message.message_type)
+                .bind(&message.data)
+                .bind(&message.metadata)
+                .bind(&self.expected_version)
+                .fetch_one(&mut *transaction)
+                .await?;
+
+            self.expected_version = self.expected_version.map(|version| version + 1 );
+        }
+
+        transaction.commit().await?;
+
+        Ok(last_position.0)
     }
 }

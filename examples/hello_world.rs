@@ -43,6 +43,24 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    let deposit_json = serde_json::json!({
+        "amount": 10,
+        "time": chrono::prelude::Utc::now().to_string(),
+    });
+    let payload = MessagePayload {
+        data: deposit_json.to_string(),
+        message_type: String::from("Deposit"),
+        metadata: None,
+    };
+
+    let last_position = message_store.write_messages("someAccountCategory-745D49F3-CB89-4EE9-958D-1BA63E35A061")
+        .await?
+        .with_message(payload)
+        .execute()
+        .await?;
+
+    println!("Last position written: {}", last_position);
+
     Ok(())
 }
 

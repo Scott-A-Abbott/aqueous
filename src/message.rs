@@ -2,6 +2,25 @@ use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, ops::Deref};
 
+#[derive(sqlx::FromRow, Debug, Clone)]
+pub struct MessageData {
+    pub id: String,
+    pub stream_name: String,
+    #[sqlx(rename = "type")]
+    pub type_name: String,
+    pub position: i64,
+    pub global_position: i64,
+    pub metadata: String,
+    pub data: String,
+    pub time: NaiveDateTime,
+}
+
+pub struct MessagePayload {
+    pub message_type: String,
+    pub data: String,
+    pub metadata: Option<String>,
+}
+
 // Should have a derive macro that can generate the message_type needed for MessageData
 pub trait Message: Sized {
     const TYPE_NAME: &'static str;
@@ -16,7 +35,7 @@ pub struct RawMetadata {
     pub reply_stream_name: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Metadata {
     pub stream_name: String,
     pub position: i64,
@@ -46,11 +65,11 @@ impl Metadata {
 }
 
 #[derive(Debug)]
-pub struct Msg<T: Message> {
+pub struct Msg<T> {
     pub data: T,
     pub metadata: Metadata,
 }
-impl<T: Message> Deref for Msg<T> {
+impl<T> Deref for Msg<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -79,17 +98,4 @@ where
             Err(format!("Message Data is not an instance of {}", T::TYPE_NAME).into())
         }
     }
-}
-
-#[derive(sqlx::FromRow, Debug, Clone)]
-pub struct MessageData {
-    pub id: String,
-    pub stream_name: String,
-    #[sqlx(rename = "type")]
-    pub type_name: String,
-    pub position: i64,
-    pub global_position: i64,
-    pub metadata: String,
-    pub data: String,
-    pub time: NaiveDateTime,
 }
