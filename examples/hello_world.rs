@@ -17,9 +17,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     );
     let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
 
-    let handler2 = IntoHandler::into_handler(handle_message::<Canceled>);
-    let mut boxed_handler2: Box<dyn Handler> = Box::new(handler2);
-
     const MAX_CONNECTIONS: u32 = 5;
     let message_store = MessageStorePg::new(
         "postgres://message_store@localhost/message_store",
@@ -37,10 +34,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         if boxed_handler.handles_message(&message_data.type_name) {
             boxed_handler.call(message_data.clone());
             boxed_handler.call(message_data.clone());
-
-            println!("");
-
-            boxed_handler2.call(message_data);
         }
     }
 
@@ -92,8 +85,4 @@ impl HandlerParam for SomeParam {
     fn build(_: MessageData, _: &HandlerRetainers) -> Result<Self, Self::Error> {
         Ok(Self(10))
     }
-}
-
-fn handle_message<M: Message + std::fmt::Debug>(message: Msg<M>) {
-    println!("Message: {:#?}", message)
 }
