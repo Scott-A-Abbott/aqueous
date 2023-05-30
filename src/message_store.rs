@@ -1,5 +1,5 @@
 use crate::MessageData;
-use sqlx::{pool::PoolConnection, postgres::PgPoolOptions, PgPool, Postgres};
+use sqlx::{pool::PoolConnection, postgres::PgPoolOptions, Acquire, PgExecutor, PgPool, Postgres};
 use std::error::Error;
 
 pub struct MessageStore<Store> {
@@ -46,18 +46,18 @@ impl MessageStore<PgPool> {
     }
 }
 
-pub struct GetStreamMessages<Conn> {
-    conn: Conn,
+pub struct GetStreamMessages<Executor> {
+    executor: Executor,
     stream_name: String,
     position: Option<i64>,
     batch_size: Option<i64>,
     condition: Option<String>,
 }
 
-impl<Conn> GetStreamMessages<Conn> {
-    pub fn new(conn: Conn, stream_name: &str) -> Self {
+impl<Executor> GetStreamMessages<Executor> {
+    pub fn new(executor: Executor, stream_name: &str) -> Self {
         Self {
-            conn,
+            executor,
             stream_name: stream_name.to_owned(),
             position: None,
             batch_size: None,
@@ -81,7 +81,10 @@ impl<Conn> GetStreamMessages<Conn> {
     }
 }
 
-impl GetStreamMessages<sqlx::pool::PoolConnection<Postgres>> {
+impl<Executor> GetStreamMessages<Executor>
+where
+    for<'e> &'e mut Executor: PgExecutor<'e>,
+{
     pub async fn execute(&mut self) -> Result<Vec<MessageData>, Box<dyn Error>> {
         sqlx::query_as(
             "SELECT * from get_stream_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar);",
@@ -90,14 +93,14 @@ impl GetStreamMessages<sqlx::pool::PoolConnection<Postgres>> {
         .bind(self.position.unwrap_or_else(|| 0))
         .bind(self.batch_size.unwrap_or_else(|| 1000))
         .bind(&self.condition)
-        .fetch_all(&mut self.conn)
+        .fetch_all(&mut self.executor)
         .await
         .map_err(|e| e.into())
     }
 }
 
-pub struct GetCategoryMessages<Conn> {
-    conn: Conn,
+pub struct GetCategoryMessages<Executor> {
+    executor: Executor,
     category_name: String,
     position: Option<i64>,
     batch_size: Option<i64>,
@@ -107,10 +110,10 @@ pub struct GetCategoryMessages<Conn> {
     condition: Option<String>,
 }
 
-impl<Conn> GetCategoryMessages<Conn> {
-    pub fn new(conn: Conn, stream_name: &str) -> Self {
+impl<Executor> GetCategoryMessages<Executor> {
+    pub fn new(executor: Executor, stream_name: &str) -> Self {
         Self {
-            conn,
+            executor,
             category_name: stream_name.to_owned(),
             position: None,
             batch_size: None,
@@ -152,7 +155,10 @@ impl<Conn> GetCategoryMessages<Conn> {
     }
 }
 
-impl GetCategoryMessages<sqlx::pool::PoolConnection<Postgres>> {
+impl<Executor> GetCategoryMessages<Executor>
+where
+    for<'e> &'e mut Executor: PgExecutor<'e>,
+{
     pub async fn execute(&mut self) -> Result<Vec<MessageData>, Box<dyn Error>> {
         sqlx::query_as(
             "SELECT * FROM get_category_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar, $5::bigint, $6::bigint, $7::varchar);",
@@ -164,14 +170,14 @@ impl GetCategoryMessages<sqlx::pool::PoolConnection<Postgres>> {
         .bind(&self.consumer_group_member)
         .bind(&self.consumer_group_size)
         .bind(&self.condition)
-        .fetch_all(&mut self.conn)
+        .fetch_all(&mut self.executor)
         .await
         .map_err(|e| e.into())
     }
 }
 
-pub struct WriteMessages<Conn> {
-    conn: Conn,
+pub struct WriteMessages<Executor> {
+    executor: Executor,
     stream_name: String,
     expected_version: Option<i64>,
     messages: Vec<WriteMessageData>,
@@ -185,10 +191,10 @@ struct WriteMessageData {
     metadata: Option<String>,
 }
 
-impl<Conn> WriteMessages<Conn> {
-    pub fn new(conn: Conn, stream_name: &str) -> Self {
+impl<Executor> WriteMessages<Executor> {
+    pub fn new(executor: Executor, stream_name: &str) -> Self {
         Self {
-            conn,
+            executor,
             stream_name: stream_name.to_owned(),
             expected_version: None,
             messages: Vec::new(),
@@ -228,15 +234,16 @@ impl<Conn> WriteMessages<Conn> {
     }
 }
 
-impl WriteMessages<sqlx::pool::PoolConnection<Postgres>> {
+impl<Executor> WriteMessages<Executor>
+where
+    for<'a> &'a mut Executor: Acquire<'a, Database = Postgres>,
+{
     pub async fn execute(&mut self) -> Result<i64, Box<dyn Error>> {
-        use sqlx::Acquire;
-
         #[derive(sqlx::FromRow)]
         struct LastPosition(i64);
         let mut last_position = LastPosition(-1);
 
-        let mut transaction = self.conn.begin().await?;
+        let mut transaction = self.executor.begin().await?;
 
         for message in self.messages.iter() {
             let id = uuid::Uuid::new_v4().to_string();
