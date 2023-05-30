@@ -2,6 +2,7 @@ use aqueous::*;
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
+use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
@@ -10,8 +11,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             some_param.add(5);
             println!("Some param: {:?}", some_param.value());
 
-            let amount = deposit.amount;
-            println!("Deposit amount: {}", amount);
+            println!("Deposit: {:#?}", deposit);
         });
     let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
 
@@ -34,13 +34,14 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let deposit = Deposit {
+        account_id: Uuid::new_v4(),
         amount: 10,
         time: Utc::now(),
     };
 
     let last_position = WriteMessages::new(
         pool.acquire().await?,
-        "someAccountCategory-745D49F3-CB89-4EE9-958D-1BA63E35A061",
+        &format!("someAccountCategory-{}", deposit.account_id),
     )
     .with_message(deposit)
     .execute()
@@ -53,6 +54,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Deposit {
+    account_id: Uuid,
     amount: i64,
     time: DateTime<Utc>,
 }
