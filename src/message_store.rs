@@ -174,7 +174,7 @@ pub struct WriteMessages<Conn> {
     conn: Conn,
     stream_name: String,
     expected_version: Option<i64>,
-    messages: Vec<crate::MessagePayload>,
+    messages: Vec<serde_json::Value>,
 }
 
 impl<Conn> WriteMessages<Conn> {
@@ -192,22 +192,30 @@ impl<Conn> WriteMessages<Conn> {
         self
     }
 
-    pub fn with_message(mut self, message: impl Into<crate::MessagePayload>) -> Self {
-        self.messages.push(message.into());
+    pub fn with_message<T>(mut self, message: T) -> Self 
+    where
+        T: serde::Serialize + crate::Message + Into<crate::Msg<T>>
+    {
+        let msg = message.into();
+        let message_data = serde_json::json!({
+            "type": T::TYPE_NAME,
+            "data": serde_json::to_value(msg.data).unwrap(),
+            "metadata": serde_json::to_value(msg.metadata).unwrap(),
+        });
+
+        self.messages.push(message_data);
         self
     }
 
     pub fn with_batch<T>(mut self, batch: impl AsRef<[T]>) -> Self
     where
-        T: Clone + Into<crate::MessagePayload>,
+        T: serde::Serialize + crate::Message + Clone + Into<crate::Msg<T>>,
     {
-        let mut payloads = batch
-            .as_ref()
-            .iter()
-            .map(|msg| msg.clone().into())
-            .collect::<Vec<crate::MessagePayload>>();
+        for message in batch.as_ref().iter() {
+            let msg = message.clone().into(); 
+            self = self.with_message(msg);
+        }
 
-        self.messages.append(&mut payloads);
         self
     }
 }
@@ -230,9 +238,9 @@ impl WriteMessages<sqlx::pool::PoolConnection<Postgres>> {
             )
                 .bind(id)
                 .bind(&self.stream_name)
-                .bind(&message.message_type)
-                .bind(&message.data)
-                .bind(&message.metadata)
+                .bind(message.get("type"))
+                .bind(message.get("data"))
+                .bind(message.get("metadata"))
                 .bind(&self.expected_version)
                 .fetch_one(&mut *transaction)
                 .await?;

@@ -1,5 +1,6 @@
 use chrono::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, de::DeserializeOwned, Serialize};
+use serde_json::{Map, Value};
 use std::{error::Error, ops::Deref};
 
 #[derive(sqlx::FromRow, Debug, Clone)]
@@ -15,65 +16,165 @@ pub struct MessageData {
     pub time: NaiveDateTime,
 }
 
-pub struct MessagePayload {
-    pub message_type: String,
-    pub data: String,
-    pub metadata: Option<String>,
-}
-
 // Should have a derive macro that can generate the message_type needed for MessageData
 pub trait Message: Sized {
     const TYPE_NAME: &'static str;
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RawMetadata {
-    pub causation_message_stream_name: Option<String>,
-    pub causation_message_position: Option<i64>,
-    pub causation_message_global_position: Option<i64>,
-    pub correlation_stream_name: Option<String>,
-    pub reply_stream_name: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Metadata {
-    pub stream_name: String,
-    pub position: i64,
-    pub global_position: i64,
-    pub causation_message_stream_name: Option<String>,
-    pub causation_message_position: Option<i64>,
-    pub causation_message_global_position: Option<i64>,
-    pub correlation_stream_name: Option<String>,
-    pub reply_stream_name: Option<String>,
-    pub time: NaiveDateTime,
-}
-
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct Metadata(Map<String, Value>);
 impl Metadata {
-    pub fn new(message_data: MessageData, raw_metadata: RawMetadata) -> Self {
-        Metadata {
-            stream_name: message_data.stream_name,
-            position: message_data.position,
-            global_position: message_data.global_position,
-            causation_message_stream_name: raw_metadata.causation_message_stream_name,
-            causation_message_position: raw_metadata.causation_message_position,
-            causation_message_global_position: raw_metadata.causation_message_global_position,
-            correlation_stream_name: raw_metadata.correlation_stream_name,
-            reply_stream_name: raw_metadata.reply_stream_name,
-            time: message_data.time,
-        }
+    const CAUSATION_MESSAGE_STREAM_NAME_KEY: &'static str = "causation_message_stream_name";
+    const CAUSATION_MESSAGE_POSITION_KEY: &'static str = "causation_message_position";
+    const CAUSATION_MESSAGE_GLOBAL_POSITION_KEY: &'static str = "causation_message_global_position";
+    const CORRELATION_STREAM_NAME_KEY: &'static str = "correlation_stream_name";
+    const POSITION_KEY: &'static str = "position";
+    const GLOBAL_POSITION_KEY: &'static str = "global_position";
+    const STREAM_NAME: &'static str = "stream_name";
+    const REPLAY_STREAM_NAME_KEY: &'static str = "correlation_stream_name";
+    const TIME_KEY: &'static str = "time";
+
+    pub fn get_as<T>(&self, key: &str) -> Option<T>
+    where
+        T: DeserializeOwned,
+    {
+        let value = self.0.get(key)?;
+        serde_json::from_value(value.clone()).ok()
+    }
+
+    pub fn set<T>(mut self, key: &str, value: T) -> Self 
+    where
+        Value: From<T>,
+    {
+        self.0.insert(key.to_owned(), value.into());
+        self
+    }
+
+    pub fn position(&self) -> Option<i64> {
+        let value = self.0.get(Self::POSITION_KEY)?;
+        serde_json::from_value(value.clone()).ok()
+    }
+
+    pub fn global_position(&self) -> Option<i64> {
+        let value = self.0.get(Self::GLOBAL_POSITION_KEY)?;
+        serde_json::from_value(value.clone()).ok()
+    }
+
+    pub fn time(&self) -> Option<NaiveDateTime> {
+        let value = self.0.get(Self::TIME_KEY)?;
+        let time_string: String = serde_json::from_value(value.clone()).ok()?;
+
+        use std::str::FromStr;
+        NaiveDateTime::from_str(&time_string).ok()
+    }
+
+    pub fn replay_stream_name(&self) -> Option<String> {
+        let value = self.0.get(Self::REPLAY_STREAM_NAME_KEY)?;
+        serde_json::from_value(value.clone()).ok()
+    }
+
+    pub fn causation_message_stream_name(&self) -> Option<String> {
+        let value = self.0.get(Self::CAUSATION_MESSAGE_STREAM_NAME_KEY)?.clone();
+        serde_json::from_value(value).ok()
+    }
+
+    pub fn causation_message_position(&self) -> Option<i64> {
+        let value = self.0.get(Self::CAUSATION_MESSAGE_POSITION_KEY)?.clone();
+        serde_json::from_value(value).ok()
+    }
+
+    pub fn causation_message_global_position(&self) -> Option<i64> {
+        let value = self.0.get(Self::CAUSATION_MESSAGE_GLOBAL_POSITION_KEY)?.clone();
+        serde_json::from_value(value).ok()
+    }
+
+    pub fn correlation_stream_name(&self) -> Option<String> {
+        let value = self.0.get(Self::CORRELATION_STREAM_NAME_KEY)?.clone();
+        serde_json::from_value(value).ok()
+    }
+
+    pub fn set_causation_message_stream_name(mut self, stream_name: &str) -> Self {
+        let key = String::from(Self::CAUSATION_MESSAGE_STREAM_NAME_KEY);
+        self.0.insert(key, stream_name.into());
+        self
+    }
+
+    pub fn set_causation_message_position(mut self, position: i64) -> Self {
+        let key = String::from(Self::CAUSATION_MESSAGE_POSITION_KEY);
+        self.0.insert(key, position.into());
+        self
+    }
+
+    pub fn set_causation_message_global_position(mut self, global_position: i64) -> Self {
+        let key = String::from(Self::CAUSATION_MESSAGE_GLOBAL_POSITION_KEY);
+        self.0.insert(key, global_position.into());
+        self
+    }
+
+    pub fn set_correlation_stream_name(mut self, stream_name: &str) -> Self {
+        let key = String::from(Self::CORRELATION_STREAM_NAME_KEY);
+        self.0.insert(key, stream_name.into());
+        self
+    }
+
+    pub fn set_position(mut self, position: i64) -> Self {
+        let key = String::from(Self::POSITION_KEY);
+        self.0.insert(key, position.into());
+        self
+    }
+
+    pub fn set_global_position(mut self, global_position: i64) -> Self {
+        let key = String::from(Self::GLOBAL_POSITION_KEY);
+        self.0.insert(key, global_position.into());
+        self
+    }
+
+    pub fn set_replay_stream_name(mut self, stream_name: &str) -> Self {
+        let key = String::from(Self::REPLAY_STREAM_NAME_KEY);
+        self.0.insert(key, stream_name.into());
+        self
+    }
+
+    pub fn set_time(mut self, time: NaiveDateTime) -> Self {
+        let key = String::from(Self::TIME_KEY);
+        self.0.insert(key, time.to_string().into());
+        self
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Msg<T> {
     pub data: T,
     pub metadata: Metadata,
 }
+
+impl<T: Message> Message for Msg<T> {
+    const TYPE_NAME: &'static str = T::TYPE_NAME;
+}
+
+impl<T> From<T> for Msg<T> {
+    fn from(data: T) -> Self {
+        Msg {
+           data,
+           metadata: Metadata::default()
+        }
+    }
+}
+
 impl<T> Deref for Msg<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
         &self.data
+    }
+}
+
+impl<T: Clone> Clone for Msg<T> {
+    fn clone(&self) -> Self {
+        Self {
+            data: self.data.clone(),
+            metadata: self.metadata.clone()
+        }
     }
 }
 
@@ -89,9 +190,12 @@ where
     ) -> Result<Self, Self::Error> {
         if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;
-            let raw_metadata = serde_json::from_str(&message_data.metadata)?;
+            let mut metadata: Metadata = serde_json::from_str(&message_data.metadata)?;
 
-            let metadata = Metadata::new(message_data, raw_metadata);
+            metadata = metadata
+                .set_position(message_data.position)
+                .set_global_position(message_data.global_position)
+                .set_time(message_data.time);
 
             Ok(Msg { data, metadata })
         } else {

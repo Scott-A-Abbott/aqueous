@@ -37,20 +37,23 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let deposit_json = serde_json::json!({
-        "amount": 10,
-        "time": chrono::prelude::Utc::now().to_string(),
-    });
-    let payload = MessagePayload {
-        data: deposit_json.to_string(),
-        message_type: String::from("Deposit"),
-        metadata: None,
+    #[derive(Serialize, Debug)]
+    struct Deposit {
+        amount: i64,
+        time: DateTime<Utc>,
+    }
+    impl Message for Deposit {
+        const TYPE_NAME: &'static str = "Deposit";
+    }
+    let deposit = Deposit {
+        amount: 10,
+        time: Utc::now()
     };
 
     let last_position = message_store
         .write_messages("someAccountCategory-745D49F3-CB89-4EE9-958D-1BA63E35A061")
         .await?
-        .with_message(payload)
+        .with_message(deposit)
         .execute()
         .await?;
 
