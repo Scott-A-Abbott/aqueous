@@ -47,7 +47,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     }
     let deposit = Deposit {
         amount: 10,
-        time: Utc::now()
+        time: Utc::now(),
     };
 
     let last_position = message_store

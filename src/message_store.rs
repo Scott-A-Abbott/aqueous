@@ -192,9 +192,9 @@ impl<Conn> WriteMessages<Conn> {
         self
     }
 
-    pub fn with_message<T>(mut self, message: T) -> Self 
+    pub fn with_message<T>(mut self, message: T) -> Self
     where
-        T: serde::Serialize + crate::Message + Into<crate::Msg<T>>
+        T: serde::Serialize + crate::Message + Into<crate::Msg<T>>,
     {
         let msg = message.into();
         let message_data = serde_json::json!({
@@ -212,7 +212,7 @@ impl<Conn> WriteMessages<Conn> {
         T: serde::Serialize + crate::Message + Clone + Into<crate::Msg<T>>,
     {
         for message in batch.as_ref().iter() {
-            let msg = message.clone().into(); 
+            let msg = message.clone().into();
             self = self.with_message(msg);
         }
 

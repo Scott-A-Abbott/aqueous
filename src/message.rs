@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use serde::{Deserialize, de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{error::Error, ops::Deref};
 
@@ -42,7 +42,7 @@ impl Metadata {
         serde_json::from_value(value.clone()).ok()
     }
 
-    pub fn set<T>(mut self, key: &str, value: T) -> Self 
+    pub fn set<T>(mut self, key: &str, value: T) -> Self
     where
         Value: From<T>,
     {
@@ -84,7 +84,10 @@ impl Metadata {
     }
 
     pub fn causation_message_global_position(&self) -> Option<i64> {
-        let value = self.0.get(Self::CAUSATION_MESSAGE_GLOBAL_POSITION_KEY)?.clone();
+        let value = self
+            .0
+            .get(Self::CAUSATION_MESSAGE_GLOBAL_POSITION_KEY)?
+            .clone();
         serde_json::from_value(value).ok()
     }
 
@@ -155,8 +158,8 @@ impl<T: Message> Message for Msg<T> {
 impl<T> From<T> for Msg<T> {
     fn from(data: T) -> Self {
         Msg {
-           data,
-           metadata: None
+            data,
+            metadata: None,
         }
     }
 }
@@ -173,7 +176,7 @@ impl<T: Clone> Clone for Msg<T> {
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
-            metadata: self.metadata.clone()
+            metadata: self.metadata.clone(),
         }
     }
 }
@@ -184,10 +187,7 @@ where
 {
     type Error = Box<dyn Error>;
 
-    fn build(
-        message_data: MessageData,
-        _: &crate::HandlerRetainers,
-    ) -> Result<Self, Self::Error> {
+    fn build(message_data: MessageData, _: &crate::HandlerRetainers) -> Result<Self, Self::Error> {
         if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;
             let mut metadata: Option<Metadata> = serde_json::from_str(&message_data.metadata)?;
