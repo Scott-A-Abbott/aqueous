@@ -174,7 +174,15 @@ pub struct WriteMessages<Conn> {
     conn: Conn,
     stream_name: String,
     expected_version: Option<i64>,
-    messages: Vec<serde_json::Value>,
+    messages: Vec<WriteMessageData>,
+}
+
+#[derive(serde::Serialize, Debug)]
+struct WriteMessageData {
+    #[serde(rename = "type")]
+    type_name: String,
+    data: String,
+    metadata: Option<String>,
 }
 
 impl<Conn> WriteMessages<Conn> {
@@ -197,11 +205,11 @@ impl<Conn> WriteMessages<Conn> {
         T: serde::Serialize + crate::Message + Into<crate::Msg<T>>,
     {
         let msg = message.into();
-        let message_data = serde_json::json!({
-            "type": T::TYPE_NAME,
-            "data": serde_json::to_value(msg.data).unwrap(),
-            "metadata": serde_json::to_value(msg.metadata).unwrap(),
-        });
+        let message_data = WriteMessageData {
+            type_name: T::TYPE_NAME.to_owned(),
+            data: serde_json::to_string(&msg.data).unwrap(),
+            metadata: serde_json::to_string(&msg.metadata).ok(),
+        };
 
         self.messages.push(message_data);
         self
@@ -238,9 +246,9 @@ impl WriteMessages<sqlx::pool::PoolConnection<Postgres>> {
             )
                 .bind(id)
                 .bind(&self.stream_name)
-                .bind(message.get("type"))
-                .bind(message.get("data"))
-                .bind(message.get("metadata"))
+                .bind(&message.type_name)
+                .bind(&message.data)
+                .bind(&message.metadata)
                 .bind(&self.expected_version)
                 .fetch_one(&mut *transaction)
                 .await?;

@@ -2,19 +2,17 @@ use aqueous::*;
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let handler = IntoHandler::into_handler(
-        |canceled: Msg<Canceled>, mut some_param: Retain<SomeParam>| {
-            let time = canceled.time;
+    let handler =
+        IntoHandler::into_handler(|deposit: Msg<Deposit>, mut some_param: Retain<SomeParam>| {
             some_param.add(5);
-
             println!("Some param: {:?}", some_param.value());
-            println!("Date and time of cancelation: {}", time);
-        },
-    );
+
+            let amount = deposit.amount;
+            println!("Deposit amount: {}", amount);
+        });
     let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
 
     const MAX_CONNECTIONS: u32 = 5;
@@ -25,26 +23,19 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     .await?;
 
     let messages = message_store
-        .get_category_messages("someCategory")
+        .get_category_messages("someAccountCategory")
         .await?
         .execute()
         .await?;
 
+    println!("Message count: {}", messages.len());
+
     for message_data in messages.into_iter() {
         if boxed_handler.handles_message(&message_data.type_name) {
-            boxed_handler.call(message_data.clone());
-            boxed_handler.call(message_data.clone());
+            boxed_handler.call(message_data);
         }
     }
 
-    #[derive(Serialize, Debug)]
-    struct Deposit {
-        amount: i64,
-        time: DateTime<Utc>,
-    }
-    impl Message for Deposit {
-        const TYPE_NAME: &'static str = "Deposit";
-    }
     let deposit = Deposit {
         amount: 10,
         time: Utc::now(),
@@ -63,14 +54,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct Canceled {
+struct Deposit {
+    amount: i64,
     time: DateTime<Utc>,
-    user_id: Uuid,
-    client_id: Uuid,
 }
-impl Message for Canceled {
-    const TYPE_NAME: &'static str = "Canceled";
+impl Message for Deposit {
+    const TYPE_NAME: &'static str = "Deposit";
 }
 
 #[derive(Debug)]

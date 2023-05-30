@@ -30,7 +30,7 @@ impl Metadata {
     const CORRELATION_STREAM_NAME_KEY: &'static str = "correlation_stream_name";
     const POSITION_KEY: &'static str = "position";
     const GLOBAL_POSITION_KEY: &'static str = "global_position";
-    const STREAM_NAME: &'static str = "stream_name";
+    const STREAM_NAME_KEY: &'static str = "stream_name";
     const REPLAY_STREAM_NAME_KEY: &'static str = "correlation_stream_name";
     const TIME_KEY: &'static str = "time";
 
@@ -57,6 +57,11 @@ impl Metadata {
 
     pub fn global_position(&self) -> Option<i64> {
         let value = self.0.get(Self::GLOBAL_POSITION_KEY)?;
+        serde_json::from_value(value.clone()).ok()
+    }
+
+    pub fn stream_name(&self) -> Option<String> {
+        let value = self.0.get(Self::STREAM_NAME_KEY)?;
         serde_json::from_value(value.clone()).ok()
     }
 
@@ -132,6 +137,12 @@ impl Metadata {
         self
     }
 
+    pub fn set_stream_name(mut self, stream_name: &str) -> Self {
+        let key = String::from(Self::STREAM_NAME_KEY);
+        self.0.insert(key, stream_name.into());
+        self
+    }
+
     pub fn set_replay_stream_name(mut self, stream_name: &str) -> Self {
         let key = String::from(Self::REPLAY_STREAM_NAME_KEY);
         self.0.insert(key, stream_name.into());
@@ -190,16 +201,19 @@ where
     fn build(message_data: MessageData, _: &crate::HandlerRetainers) -> Result<Self, Self::Error> {
         if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;
-            let mut metadata: Option<Metadata> = serde_json::from_str(&message_data.metadata)?;
+            let maybe_metadata: Option<Metadata> = serde_json::from_str(&message_data.metadata)?;
 
-            metadata = metadata.map(|metadata| {
-                metadata
-                    .set_position(message_data.position)
-                    .set_global_position(message_data.global_position)
-                    .set_time(message_data.time)
-            });
+            let metadata = maybe_metadata
+                .unwrap_or_default()
+                .set_position(message_data.position)
+                .set_global_position(message_data.global_position)
+                .set_time(message_data.time)
+                .set_stream_name(&message_data.stream_name);
 
-            Ok(Msg { data, metadata })
+            Ok(Msg {
+                data,
+                metadata: Some(metadata),
+            })
         } else {
             Err(format!("Message Data is not an instance of {}", T::TYPE_NAME).into())
         }
