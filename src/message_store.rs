@@ -1,50 +1,6 @@
 use crate::MessageData;
-use sqlx::{pool::PoolConnection, postgres::PgPoolOptions, Acquire, PgExecutor, PgPool, Postgres};
+use sqlx::{Acquire, PgExecutor, Postgres};
 use std::error::Error;
-
-pub struct MessageStore<Store> {
-    store: Store,
-}
-
-pub type MessageStorePg = MessageStore<PgPool>;
-impl MessageStore<PgPool> {
-    pub async fn new(url: &str, max_connections: u32) -> Result<Self, Box<dyn Error>> {
-        let store = PgPoolOptions::new()
-            .max_connections(max_connections)
-            .connect(url)
-            .await?;
-
-        Ok(Self { store })
-    }
-
-    pub fn from_pool(pool: PgPool) -> Self {
-        Self { store: pool }
-    }
-
-    pub async fn get_stream_messages(
-        &self,
-        stream_name: &str,
-    ) -> Result<GetStreamMessages<PoolConnection<Postgres>>, Box<dyn Error>> {
-        let conn = self.store.acquire().await?;
-        Ok(GetStreamMessages::new(conn, stream_name))
-    }
-
-    pub async fn get_category_messages(
-        &self,
-        category_name: &str,
-    ) -> Result<GetCategoryMessages<PoolConnection<Postgres>>, Box<dyn Error>> {
-        let conn = self.store.acquire().await?;
-        Ok(GetCategoryMessages::new(conn, category_name))
-    }
-
-    pub async fn write_messages(
-        &self,
-        stream_name: &str,
-    ) -> Result<WriteMessages<PoolConnection<Postgres>>, Box<dyn Error>> {
-        let conn = self.store.acquire().await?;
-        Ok(WriteMessages::new(conn, stream_name))
-    }
-}
 
 pub struct GetStreamMessages<Executor> {
     executor: Executor,

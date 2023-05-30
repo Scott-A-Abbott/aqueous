@@ -16,15 +16,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
 
     const MAX_CONNECTIONS: u32 = 5;
-    let message_store = MessageStorePg::new(
-        "postgres://message_store@localhost/message_store",
-        MAX_CONNECTIONS,
-    )
-    .await?;
+    let pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(MAX_CONNECTIONS)
+        .connect("postgres://message_store@localhost/message_store")
+        .await?;
 
-    let messages = message_store
-        .get_category_messages("someAccountCategory")
-        .await?
+    let messages = GetCategoryMessages::new(pool.acquire().await?, "someAccountCategory")
         .execute()
         .await?;
 
@@ -41,12 +38,13 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         time: Utc::now(),
     };
 
-    let last_position = message_store
-        .write_messages("someAccountCategory-745D49F3-CB89-4EE9-958D-1BA63E35A061")
-        .await?
-        .with_message(deposit)
-        .execute()
-        .await?;
+    let last_position = WriteMessages::new(
+        pool.acquire().await?,
+        "someAccountCategory-745D49F3-CB89-4EE9-958D-1BA63E35A061",
+    )
+    .with_message(deposit)
+    .execute()
+    .await?;
 
     println!("Last position written: {}", last_position);
 
