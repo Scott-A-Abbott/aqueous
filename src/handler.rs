@@ -108,91 +108,95 @@ pub struct FunctionHandler<Marker, F> {
     retainers: HandlerRetainers,
 }
 
-impl<T1, F> Handler for FunctionHandler<(T1,), F>
-where
-    T1: HandlerParam,
-    F: FnMut(T1),
-{
-    fn call(&mut self, message_data: crate::MessageData) {
-        let t1 = T1::build(message_data, &mut self.retainers).unwrap();
-        (self.func)(t1);
-    }
-
-    fn handles_message(&self, message_type: &str) -> bool {
-        message_type == self.message_type.as_str()
-    }
-}
-
-impl<T1, T2, F> Handler for FunctionHandler<(T1, T2), F>
-where
-    T1: HandlerParam,
-    T2: HandlerParam,
-    F: FnMut(T1, T2),
-{
-    fn call(&mut self, message_data: crate::MessageData) {
-        let t1 = T1::build(message_data.clone(), &mut self.retainers).unwrap();
-        let t2 = T2::build(message_data, &mut self.retainers).unwrap();
-        (self.func)(t1, t2);
-    }
-
-    fn handles_message(&self, message_type: &str) -> bool {
-        message_type == self.message_type.as_str()
-    }
-}
-
 pub trait IntoHandler<Marker>: Sized {
     fn into_handler(this: Self) -> FunctionHandler<Marker, Self>;
 }
 
-impl<Msg, T1, F> IntoHandler<(T1,)> for F
-where
-    Msg: crate::Message,
-    T1: Deref<Target = Msg>,
-    F: FnMut(T1),
-{
-    fn into_handler(this: Self) -> FunctionHandler<(T1,), Self> {
-        FunctionHandler {
-            func: this,
-            marker: Default::default(),
-            message_type: Msg::TYPE_NAME.to_owned(),
-            retainers: Default::default(),
+#[rustfmt::skip]
+macro_rules! all_tuples {
+    ($macro_name:ident) => {
+        $macro_name!(T1);
+        $macro_name!(T1, T2);
+        $macro_name!(T1, T2, T3);
+        $macro_name!(T1, T2, T3, T4);
+        $macro_name!(T1, T2, T3, T4, T5);
+        $macro_name!(T1, T2, T3, T4, T5, T6);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+    };
+}
+
+macro_rules! impl_handler {
+   ($($ty:ident $(,)?)*)=> {
+        #[allow(non_snake_case, unused_mut)]
+        impl<$($ty,)* F> Handler for FunctionHandler<($($ty,)*), F>
+        where
+            $($ty: HandlerParam,)*
+            F: FnMut($($ty,)*),
+        {
+            fn call(&mut self, message_data: crate::MessageData) {
+                $(let $ty = $ty::build(message_data.clone(), &self.retainers).unwrap();)*
+                (self.func)($($ty,)*);
+            }
+
+            fn handles_message(&self, message_type: &str) -> bool {
+                message_type == self.message_type.as_str()
+            }
+        }
+   } 
+}
+
+all_tuples!(impl_handler);
+
+#[rustfmt::skip]
+macro_rules! all_tuples_with_first {
+    ($macro_name:ident) => {
+        $macro_name!(T1, []);
+        $macro_name!(T1, [T2]);
+        $macro_name!(T1, [T2, T3]);
+        $macro_name!(T1, [T2, T3, T4]);
+        $macro_name!(T1, [T2, T3, T4, T5]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9, T10]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]);
+        $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]);
+    };
+}
+
+macro_rules! impl_into_handler {
+    ($first:ident, [$($ty:ident $(,)?)*]) => {
+        #[allow(non_snake_case, unused_mut)]
+        impl<Msg, F, $first, $($ty,)*> IntoHandler<($first, $($ty,)*)> for F
+        where
+            Msg: crate::Message,
+            $first: Deref<Target = Msg>,
+            F: FnMut($first, $($ty,)*),
+        {
+            fn into_handler(this: Self) -> FunctionHandler<($first, $($ty,)*), Self> {
+                FunctionHandler {
+                    func: this,
+                    marker: Default::default(),
+                    message_type: Msg::TYPE_NAME.to_owned(),
+                    retainers: Default::default(),
+                }
+            }
         }
     }
 }
 
-impl<Msg, T1, T2, F> IntoHandler<(T1, T2)> for F
-where
-    Msg: crate::Message,
-    T1: Deref<Target = Msg>,
-    F: FnMut(T1, T2),
-{
-    fn into_handler(this: Self) -> FunctionHandler<(T1, T2), Self> {
-        FunctionHandler {
-            func: this,
-            marker: Default::default(),
-            message_type: Msg::TYPE_NAME.to_owned(),
-            retainers: Default::default(),
-        }
-    }
-}
-// #[rustfmt::skip]
-// macro_rules! for_all_tuples {
-//     ($maro_name:ident) => {
-//         $macro_name!(T1);
-//         $macro_name!(T1, T2);
-//         $macro_name!(T1, T2, T3);
-//         $macro_name!(T1, T2, T3, T4);
-//         $macro_name!(T1, T2, T3, T4, T5);
-//         $macro_name!(T1, T2, T3, T4, T5, T6);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
-//         $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
-//     };
-// }
+all_tuples_with_first!(impl_into_handler);
