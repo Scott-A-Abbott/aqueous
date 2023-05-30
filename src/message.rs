@@ -145,7 +145,7 @@ impl Metadata {
 #[derive(Debug, Serialize)]
 pub struct Msg<T> {
     pub data: T,
-    pub metadata: Metadata,
+    pub metadata: Option<Metadata>,
 }
 
 impl<T: Message> Message for Msg<T> {
@@ -156,7 +156,7 @@ impl<T> From<T> for Msg<T> {
     fn from(data: T) -> Self {
         Msg {
            data,
-           metadata: Metadata::default()
+           metadata: None
         }
     }
 }
@@ -190,12 +190,14 @@ where
     ) -> Result<Self, Self::Error> {
         if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;
-            let mut metadata: Metadata = serde_json::from_str(&message_data.metadata)?;
+            let mut metadata: Option<Metadata> = serde_json::from_str(&message_data.metadata)?;
 
-            metadata = metadata
-                .set_position(message_data.position)
-                .set_global_position(message_data.global_position)
-                .set_time(message_data.time);
+            metadata = metadata.map(|metadata| {
+                metadata
+                    .set_position(message_data.position)
+                    .set_global_position(message_data.global_position)
+                    .set_time(message_data.time)
+            });
 
             Ok(Msg { data, metadata })
         } else {
