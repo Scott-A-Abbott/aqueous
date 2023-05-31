@@ -162,6 +162,32 @@ pub struct Msg<T> {
     pub metadata: Option<Metadata>,
 }
 
+impl<T> Msg<T> 
+where
+    for<'de> T: Message + Deserialize<'de>,
+{
+    pub fn from_data(message_data: MessageData) -> Result<Self, Box<dyn Error>> {
+        if &message_data.type_name == T::TYPE_NAME {
+            let data = serde_json::from_str(&message_data.data)?;
+            let maybe_metadata: Option<Metadata> = serde_json::from_str(&message_data.metadata)?;
+
+            let metadata = maybe_metadata
+                .unwrap_or_default()
+                .set_position(message_data.position)
+                .set_global_position(message_data.global_position)
+                .set_time(message_data.time)
+                .set_stream_name(&message_data.stream_name);
+
+            Ok(Msg {
+                data,
+                metadata: Some(metadata),
+            })
+        } else {
+            Err(format!("Message Data is not an instance of {}", T::TYPE_NAME).into())
+        }
+    }
+}
+
 impl<T: Message> Message for Msg<T> {
     const TYPE_NAME: &'static str = T::TYPE_NAME;
 }
@@ -199,23 +225,6 @@ where
     type Error = Box<dyn Error>;
 
     fn build(message_data: MessageData, _: &crate::HandlerRetainers) -> Result<Self, Self::Error> {
-        if &message_data.type_name == T::TYPE_NAME {
-            let data = serde_json::from_str(&message_data.data)?;
-            let maybe_metadata: Option<Metadata> = serde_json::from_str(&message_data.metadata)?;
-
-            let metadata = maybe_metadata
-                .unwrap_or_default()
-                .set_position(message_data.position)
-                .set_global_position(message_data.global_position)
-                .set_time(message_data.time)
-                .set_stream_name(&message_data.stream_name);
-
-            Ok(Msg {
-                data,
-                metadata: Some(metadata),
-            })
-        } else {
-            Err(format!("Message Data is not an instance of {}", T::TYPE_NAME).into())
-        }
+        Msg::from_data(message_data)
     }
 }

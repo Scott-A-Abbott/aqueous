@@ -166,7 +166,7 @@ impl<Executor> WriteMessages<Executor> {
     where
         T: serde::Serialize + crate::Message + Into<crate::Msg<T>>,
     {
-        let msg = message.into();
+        let msg: crate::Msg<T> = message.into();
         let message_data = WriteMessageData {
             type_name: T::TYPE_NAME.to_owned(),
             data: serde_json::to_string(&msg.data).unwrap(),
@@ -182,8 +182,7 @@ impl<Executor> WriteMessages<Executor> {
         T: serde::Serialize + crate::Message + Clone + Into<crate::Msg<T>>,
     {
         for message in batch.as_ref().iter() {
-            let msg = message.clone().into();
-            self.with_message(msg);
+            self.with_message(message.clone());
         }
 
         self

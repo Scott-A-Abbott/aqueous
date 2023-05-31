@@ -33,15 +33,18 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    // WRITING A COMMAND
     let deposit = Deposit {
         account_id: Uuid::new_v4(),
         amount: 10,
         time: Utc::now(),
     };
 
+    let stream_name = format!("someAccountCategory-{}", deposit.account_id);
+
     let last_position = WriteMessages::new(
         pool.clone(),
-        &format!("someAccountCategory-{}", deposit.account_id),
+        &stream_name,
     )
     .with_message(deposit)
     .execute()
@@ -49,10 +52,46 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Last position written: {}", last_position);
 
+    // WRITING A BATCH OF EVENTS
+    let deposited = Deposited {
+        account_id: Uuid::new_v4(),
+        amount: 10,
+        time: Utc::now(),
+    };
+
+    let batch: Vec<Deposited> = (0..10).into_iter().map(|_| deposited.clone()).collect();
+
+    let stream_name = format!("someAccountCategory-{}", deposited.account_id);
+
+    WriteMessages::new(
+        pool.clone(),
+        &stream_name,
+    )
+        .with_batch(batch)
+        .execute()
+        .await?;
+
+    // PROJECTING AN ENTITY
+    let mut store = Store::new(pool.clone());
+    store.with_projection(|account: &mut AccountEntity, message: Msg<Deposited>| {
+        account.balance += message.amount;
+    });
+
+    let account = store
+        .fetch(&stream_name)
+        .await;
+
+    println!("Account balance: {}", account.balance);
+
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Default)]
+struct AccountEntity {
+    pub balance: i64
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct Deposit {
     account_id: Uuid,
     amount: i64,
@@ -60,6 +99,16 @@ struct Deposit {
 }
 impl Message for Deposit {
     const TYPE_NAME: &'static str = "Deposit";
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Deposited {
+    account_id: Uuid,
+    amount: i64,
+    time: DateTime<Utc>,
+}
+impl Message for Deposited {
+    const TYPE_NAME: &'static str = "Deposited";
 }
 
 #[derive(Debug)]
