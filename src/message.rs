@@ -224,7 +224,7 @@ where
 {
     type Error = Box<dyn Error>;
 
-    fn build(message_data: MessageData, _: &crate::HandlerRetainers) -> Result<Self, Self::Error> {
+    fn build(message_data: MessageData, _: &crate::HandlerResources) -> Result<Self, Self::Error> {
         Msg::from_data(message_data)
     }
 }

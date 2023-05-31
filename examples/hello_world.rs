@@ -7,7 +7,7 @@ use uuid::Uuid;
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
     let handler =
-        IntoHandler::into_handler(|deposit: Msg<Deposit>, mut some_param: Retain<SomeParam>| {
+        IntoHandler::into_handler(|deposit: Msg<Deposit>, mut some_param: Res<SomeParam>| {
             some_param.add(5);
             println!("Some param: {:?}", some_param.value());
 
@@ -123,7 +123,7 @@ impl SomeParam {
 }
 impl HandlerParam for SomeParam {
     type Error = Box<dyn Error>;
-    fn build(_: MessageData, _: &HandlerRetainers) -> Result<Self, Self::Error> {
+    fn build(_: MessageData, _: &HandlerResources) -> Result<Self, Self::Error> {
         Ok(Self(10))
     }
 }

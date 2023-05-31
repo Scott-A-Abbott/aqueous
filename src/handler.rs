@@ -18,35 +18,35 @@ pub trait HandlerParam: Sized {
 
     fn build(
         message_data: crate::MessageData,
-        retainers: &HandlerRetainers,
+        resources: &HandlerResources,
     ) -> Result<Self, Self::Error>;
 }
 
 #[derive(Default)]
-pub struct HandlerRetainers(RefCell<HashMap<TypeId, Box<dyn Any>>>);
-impl HandlerRetainers {
-    pub fn retain<T: 'static>(&self, retain: T) {
-        let retainer = Retain::new(retain);
-        let boxed_retainer: Box<dyn Any> = Box::new(retainer);
+pub struct HandlerResources(RefCell<HashMap<TypeId, Box<dyn Any>>>);
+impl HandlerResources {
+    pub fn insert<T: 'static>(&self, resource: T) {
+        let res = Res::new(resource);
+        let boxed_res: Box<dyn Any> = Box::new(res);
         let type_id = TypeId::of::<T>();
 
-        let mut retainers = self.0.take();
-        retainers.insert(type_id, boxed_retainer);
+        let mut resources = self.0.take();
+        resources.insert(type_id, boxed_res);
 
-        self.0.replace(retainers);
+        self.0.replace(resources);
     }
 
-    pub fn get<T: 'static>(&self) -> Option<Retain<T>> {
-        let mut retainers = self.0.take();
+    pub fn get<T: 'static>(&self) -> Option<Res<T>> {
+        let mut resources = self.0.take();
 
         let type_id = TypeId::of::<T>();
-        let boxed_any = retainers.remove(&type_id)?;
-        let retainer: Retain<T> = *boxed_any.downcast().ok()?;
+        let boxed_any = resources.remove(&type_id)?;
+        let resource: Res<T> = *boxed_any.downcast().ok()?;
 
-        retainers.insert(type_id, Box::new(retainer.clone()));
-        self.0.replace(retainers);
+        resources.insert(type_id, Box::new(resource.clone()));
+        self.0.replace(resources);
 
-        Some(retainer)
+        Some(resource)
     }
 
     pub fn contains<T: 'static>(&self) -> bool {
@@ -55,48 +55,48 @@ impl HandlerRetainers {
     }
 }
 
-pub struct Retain<T>(Rc<UnsafeCell<T>>);
-impl<T> Retain<T> {
-    pub fn new(retain: T) -> Retain<T> {
-        let cell = UnsafeCell::new(retain);
+pub struct Res<T>(Rc<UnsafeCell<T>>);
+impl<T> Res<T> {
+    pub fn new(resource: T) -> Res<T> {
+        let cell = UnsafeCell::new(resource);
         let rc = Rc::new(cell);
         Self(rc)
     }
 }
-impl<T> Clone for Retain<T> {
+impl<T> Clone for Res<T> {
     fn clone(&self) -> Self {
         let rc = self.0.clone();
         Self(rc)
     }
 }
-impl<T> Deref for Retain<T> {
+impl<T> Deref for Res<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         unsafe { &*self.0.get() }
     }
 }
-impl<T> DerefMut for Retain<T> {
+impl<T> DerefMut for Res<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { &mut *self.0.get() }
     }
 }
-impl<T: HandlerParam + 'static> HandlerParam for Retain<T> {
+impl<T: HandlerParam + 'static> HandlerParam for Res<T> {
     type Error = Box<dyn Error>;
 
     fn build(
         message_data: crate::MessageData,
-        retainers: &HandlerRetainers,
+        resources: &HandlerResources,
     ) -> Result<Self, Self::Error> {
-        if retainers.contains::<T>() {
-            let retainer = retainers.get::<T>().unwrap();
-            Ok(retainer)
+        if resources.contains::<T>() {
+            let resource = resources.get::<T>().unwrap();
+            Ok(resource)
         } else {
-            let retainer = T::build(message_data, retainers).ok().unwrap();
+            let resource = T::build(message_data, resources).ok().unwrap();
 
-            retainers.retain(retainer);
-            let retainer = retainers.get::<T>().unwrap();
+            resources.insert(resource);
+            let resource = resources.get::<T>().unwrap();
 
-            Ok(retainer)
+            Ok(resource)
         }
     }
 }
@@ -105,7 +105,7 @@ pub struct FunctionHandler<Marker, F> {
     func: F,
     marker: PhantomData<Marker>,
     message_type: String,
-    retainers: HandlerRetainers,
+    resources: HandlerResources,
 }
 
 pub trait IntoHandler<Marker>: Sized {
@@ -143,7 +143,7 @@ macro_rules! impl_handler {
             F: FnMut($($ty,)*),
         {
             fn call(&mut self, message_data: crate::MessageData) {
-                $(let $ty = $ty::build(message_data.clone(), &self.retainers).unwrap();)*
+                $(let $ty = $ty::build(message_data.clone(), &self.resources).unwrap();)*
                 (self.func)($($ty,)*);
             }
 
@@ -192,7 +192,7 @@ macro_rules! impl_into_handler {
                     func: this,
                     marker: Default::default(),
                     message_type: Msg::TYPE_NAME.to_owned(),
-                    retainers: Default::default(),
+                    resources: Default::default(),
                 }
             }
         }
