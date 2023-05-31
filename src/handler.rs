@@ -25,7 +25,7 @@ pub trait HandlerParam: Sized {
 #[derive(Default)]
 pub struct HandlerRetainers(RefCell<HashMap<TypeId, Box<dyn Any>>>);
 impl HandlerRetainers {
-    pub(crate) fn insert<T: 'static>(&self, retain: T) {
+    pub fn retain<T: 'static>(&self, retain: T) {
         let retainer = Retain::new(retain);
         let boxed_retainer: Box<dyn Any> = Box::new(retainer);
         let type_id = TypeId::of::<T>();
@@ -93,7 +93,7 @@ impl<T: HandlerParam + 'static> HandlerParam for Retain<T> {
         } else {
             let retainer = T::build(message_data, retainers).ok().unwrap();
 
-            retainers.insert(retainer);
+            retainers.retain(retainer);
             let retainer = retainers.get::<T>().unwrap();
 
             Ok(retainer)
