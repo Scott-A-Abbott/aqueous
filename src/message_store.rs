@@ -21,17 +21,17 @@ impl<Executor> GetStreamMessages<Executor> {
         }
     }
 
-    pub fn position(mut self, position: i64) -> Self {
+    pub fn position(&mut self, position: i64) -> &mut Self {
         self.position = Some(position);
         self
     }
 
-    pub fn batch_size(mut self, batch_size: i64) -> Self {
+    pub fn batch_size(&mut self, batch_size: i64) -> &mut Self {
         self.batch_size = Some(batch_size);
         self
     }
 
-    pub fn condition(mut self, condition: &str) -> Self {
+    pub fn condition(&mut self, condition: &str) -> &mut Self {
         self.condition = Some(condition.to_owned());
         self
     }
@@ -80,32 +80,32 @@ impl<Executor> GetCategoryMessages<Executor> {
         }
     }
 
-    pub fn position(mut self, position: i64) -> Self {
+    pub fn position(&mut self, position: i64) -> &mut Self {
         self.position = Some(position);
         self
     }
 
-    pub fn batch_size(mut self, batch_size: i64) -> Self {
+    pub fn batch_size(&mut self, batch_size: i64) -> &mut Self {
         self.batch_size = Some(batch_size);
         self
     }
 
-    pub fn correlation(mut self, correlation: &str) -> Self {
+    pub fn correlation(&mut self, correlation: &str) -> &mut Self {
         self.correlation = Some(correlation.to_owned());
         self
     }
 
-    pub fn consumer_group_member(mut self, consumer_group_member: i64) -> Self {
+    pub fn consumer_group_member(&mut self, consumer_group_member: i64) -> &mut Self {
         self.consumer_group_member = Some(consumer_group_member);
         self
     }
 
-    pub fn consumer_group_size(mut self, consumer_group_size: i64) -> Self {
+    pub fn consumer_group_size(&mut self, consumer_group_size: i64) -> &mut Self {
         self.consumer_group_size = Some(consumer_group_size);
         self
     }
 
-    pub fn condition(mut self, condition: &str) -> Self {
+    pub fn condition(&mut self, condition: &str) -> &mut Self {
         self.condition = Some(condition.to_owned());
         self
     }
@@ -157,12 +157,12 @@ impl<Executor> WriteMessages<Executor> {
         }
     }
 
-    pub fn expected_version(mut self, expected_version: i64) -> Self {
+    pub fn expected_version(&mut self, expected_version: i64) -> &mut Self {
         self.expected_version = Some(expected_version);
         self
     }
 
-    pub fn with_message<T>(mut self, message: T) -> Self
+    pub fn with_message<T>(&mut self, message: T) -> &mut Self
     where
         T: serde::Serialize + crate::Message + Into<crate::Msg<T>>,
     {
@@ -177,13 +177,13 @@ impl<Executor> WriteMessages<Executor> {
         self
     }
 
-    pub fn with_batch<T>(mut self, batch: impl AsRef<[T]>) -> Self
+    pub fn with_batch<T>(&mut self, batch: impl AsRef<[T]>) -> &mut Self
     where
         T: serde::Serialize + crate::Message + Clone + Into<crate::Msg<T>>,
     {
         for message in batch.as_ref().iter() {
             let msg = message.clone().into();
-            self = self.with_message(msg);
+            self.with_message(msg);
         }
 
         self
