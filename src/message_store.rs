@@ -39,7 +39,7 @@ impl<Executor> GetStreamMessages<Executor> {
 
 impl<Executor> GetStreamMessages<Executor>
 where
-    for<'e> &'e mut Executor: PgExecutor<'e>,
+    for<'e, 'c> &'e Executor: PgExecutor<'c>,
 {
     pub async fn execute(&mut self) -> Result<Vec<MessageData>, Box<dyn Error>> {
         sqlx::query_as(
@@ -49,7 +49,7 @@ where
         .bind(self.position.unwrap_or_else(|| 0))
         .bind(self.batch_size.unwrap_or_else(|| 1000))
         .bind(&self.condition)
-        .fetch_all(&mut self.executor)
+        .fetch_all(&self.executor)
         .await
         .map_err(|e| e.into())
     }
@@ -113,9 +113,9 @@ impl<Executor> GetCategoryMessages<Executor> {
 
 impl<Executor> GetCategoryMessages<Executor>
 where
-    for<'e> &'e mut Executor: PgExecutor<'e>,
+    for<'e, 'c> &'e Executor: PgExecutor<'c>,
 {
-    pub async fn execute(&mut self) -> Result<Vec<MessageData>, Box<dyn Error>> {
+    pub async fn execute(&self) -> Result<Vec<MessageData>, Box<dyn Error>> {
         sqlx::query_as(
             "SELECT * FROM get_category_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar, $5::bigint, $6::bigint, $7::varchar);",
         )
@@ -126,7 +126,7 @@ where
         .bind(&self.consumer_group_member)
         .bind(&self.consumer_group_size)
         .bind(&self.condition)
-        .fetch_all(&mut self.executor)
+        .fetch_all(&self.executor)
         .await
         .map_err(|e| e.into())
     }
@@ -192,7 +192,7 @@ impl<Executor> WriteMessages<Executor> {
 
 impl<Executor> WriteMessages<Executor>
 where
-    for<'a> &'a mut Executor: Acquire<'a, Database = Postgres>,
+    for<'e, 'c> &'e Executor: Acquire<'c, Database = Postgres>,
 {
     pub async fn execute(&mut self) -> Result<i64, Box<dyn Error>> {
         #[derive(sqlx::FromRow)]

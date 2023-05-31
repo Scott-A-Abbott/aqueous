@@ -21,7 +21,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .connect("postgres://message_store@localhost/message_store")
         .await?;
 
-    let messages = GetCategoryMessages::new(pool.acquire().await?, "someAccountCategory")
+    let messages = GetCategoryMessages::new(pool.clone(), "someAccountCategory")
         .execute()
         .await?;
 
@@ -40,7 +40,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let last_position = WriteMessages::new(
-        pool.acquire().await?,
+        pool.clone(),
         &format!("someAccountCategory-{}", deposit.account_id),
     )
     .with_message(deposit)
