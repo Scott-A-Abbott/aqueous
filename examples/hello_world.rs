@@ -52,12 +52,13 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
             tokio::task::block_in_place(move || {
                 tokio::runtime::Handle::current().block_on(async move {
-                    let account = store.fetch(&stream_name).await;
+                    let (account, version) = store.fetch(&stream_name).await;
 
                     println!("Account Balance: {}", account.balance);
 
                     writer
                         .with_message(deposited)
+                        .expected_version(version)
                         .execute(&stream_name)
                         .await
                         .unwrap();

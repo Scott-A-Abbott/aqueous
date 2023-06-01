@@ -134,7 +134,7 @@ where
 
 pub struct WriteMessages<Executor> {
     executor: Executor,
-    expected_version: Option<i64>,
+    expected_version: Option<crate::Version>,
     messages: Vec<WriteMessageData>,
 }
 
@@ -155,7 +155,7 @@ impl<Executor> WriteMessages<Executor> {
         }
     }
 
-    pub fn expected_version(&mut self, expected_version: i64) -> &mut Self {
+    pub fn expected_version(&mut self, expected_version: crate::Version) -> &mut Self {
         self.expected_version = Some(expected_version);
         self
     }
@@ -200,6 +200,10 @@ where
 
         for message in self.messages.iter() {
             let id = uuid::Uuid::new_v4().to_string();
+            let version = self
+                .expected_version
+                .as_ref()
+                .map(|crate::Version(value)| value);
 
             last_position = sqlx::query_as(
                 "SELECT write_message($1::varchar, $2::varchar, $3::varchar, $4::jsonb, $5::jsonb, $6::bigint);",
@@ -209,16 +213,25 @@ where
                 .bind(&message.type_name)
                 .bind(&message.data)
                 .bind(&message.metadata)
-                .bind(&self.expected_version)
+                .bind(version)
                 .fetch_one(&mut *transaction)
                 .await?;
 
-            self.expected_version = self.expected_version.map(|version| version + 1);
+            self.expected_version = self
+                .expected_version
+                .as_mut()
+                .map(|crate::Version(value)| crate::Version(*value + 1));
         }
 
         transaction.commit().await?;
 
-        Ok(last_position.0)
+        let LastPosition(position) = last_position;
+
+        if position == -1 {
+            return Err("No messages were written".into());
+        }
+
+        Ok(position)
     }
 }
 

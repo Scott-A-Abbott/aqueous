@@ -1,5 +1,12 @@
 use std::{collections::HashMap, marker::PhantomData};
 
+pub struct Version(pub i64);
+impl Version {
+    pub fn initial() -> Self {
+        Self(-1)
+    }
+}
+
 pub struct Store<Entity, Executor = sqlx::PgPool> {
     projections: Vec<Box<dyn Projection<Entity>>>,
     entries: HashMap<String, (i64, Entity)>,
@@ -33,7 +40,7 @@ impl<Entity, Executor> Store<Entity, Executor> {
 }
 
 impl<Entity: Default> Store<Entity> {
-    pub async fn fetch(&mut self, stream_name: &str) -> &Entity {
+    pub async fn fetch(&mut self, stream_name: &str) -> (&Entity, Version) {
         let (pos, entity) = self.entries.entry(String::from(stream_name)).or_default();
         let messages = crate::GetStreamMessages::new(self.executor.clone(), stream_name)
             .position(*pos)
@@ -51,7 +58,7 @@ impl<Entity: Default> Store<Entity> {
             *pos = message.position;
         }
 
-        entity
+        (entity, Version(*pos))
     }
 }
 
