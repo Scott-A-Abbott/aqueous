@@ -35,9 +35,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // HANDLING COMMANDS
     let handler = IntoHandler::into_handler(
         |deposit: Msg<Deposit>,
-         AccountStore(mut store): AccountStore,
+         mut account_store: Res<AccountStore>,
          mut some_param: Res<SomeParam>,
-         mut writer: WriteMessages<sqlx::PgPool>| {
+         mut writer: WriteMessages<sqlx::PgPool>| async move {
             let SomeParam(value) = some_param.deref_mut();
             *value += 5;
             println!("Some param: {}", value);
@@ -50,21 +50,18 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
             let stream_name = format!("someAccountCategory-{}", deposit.account_id);
 
-            tokio::task::block_in_place(move || {
-                tokio::runtime::Handle::current().block_on(async move {
-                    let (account, version) = store.fetch(&stream_name).await;
+            let AccountStore(store) = account_store.deref_mut();
+            let (account, version) = store.fetch(&stream_name).await;
 
-                    println!("Account Balance: {}", account.balance);
+            println!("Account Balance: {}", account.balance);
 
-                    writer
-                        .with_message(deposited)
-                        .expected_version(version)
-                        .execute(&stream_name)
-                        .await
-                        .unwrap();
-                });
-            });
-        },
+            writer
+                .with_message(deposited)
+                .expected_version(version)
+                .execute(&stream_name)
+                .await
+                .unwrap();
+        }
     );
     handler.resources.insert(pool.clone());
 

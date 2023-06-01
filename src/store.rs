@@ -12,8 +12,6 @@ pub struct Store<Entity, Executor = sqlx::PgPool> {
     entries: HashMap<String, (i64, Entity)>,
     executor: Executor,
 }
-// ## FIX THIS FOR REALZIES!!!!
-unsafe impl<Entity> Send for Store<Entity> {}
 
 impl<Entity, Executor> Store<Entity, Executor> {
     pub fn new(executor: Executor) -> Self {
