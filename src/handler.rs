@@ -104,8 +104,8 @@ impl<T: HandlerParam + 'static> HandlerParam for Res<T> {
 pub struct FunctionHandler<Marker, F> {
     func: F,
     marker: PhantomData<Marker>,
-    message_type: String,
-    resources: HandlerResources,
+    pub message_type: String,
+    pub resources: HandlerResources,
 }
 
 pub trait IntoHandler<Marker>: Sized {
@@ -151,7 +151,7 @@ macro_rules! impl_handler {
                 message_type == self.message_type.as_str()
             }
         }
-   } 
+   }
 }
 
 all_tuples!(impl_handler);
