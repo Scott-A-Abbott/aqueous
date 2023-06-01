@@ -48,7 +48,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 time: Utc::now(),
             };
 
-            let stream_name = deposit.metadata.unwrap().stream_name().unwrap();
+            let stream_name = format!("someAccountCategory-{}", deposit.account_id);
 
             tokio::task::block_in_place(move || {
                 tokio::runtime::Handle::current().block_on(async move {
