@@ -1,6 +1,6 @@
 use crate::MessageData;
 use sqlx::{Acquire, PgExecutor, Postgres};
-use std::error::Error;
+use std::{error::Error, ops::Deref};
 
 pub struct GetStreamMessages<Executor> {
     executor: Executor,
@@ -134,7 +134,6 @@ where
 
 pub struct WriteMessages<Executor> {
     executor: Executor,
-    stream_name: String,
     expected_version: Option<i64>,
     messages: Vec<WriteMessageData>,
 }
@@ -148,10 +147,9 @@ struct WriteMessageData {
 }
 
 impl<Executor> WriteMessages<Executor> {
-    pub fn new(executor: Executor, stream_name: &str) -> Self {
+    pub fn new(executor: Executor) -> Self {
         Self {
             executor,
-            stream_name: stream_name.to_owned(),
             expected_version: None,
             messages: Vec::new(),
         }
@@ -193,7 +191,7 @@ impl<Executor> WriteMessages<Executor>
 where
     for<'e, 'c> &'e Executor: Acquire<'c, Database = Postgres>,
 {
-    pub async fn execute(&mut self) -> Result<i64, Box<dyn Error>> {
+    pub async fn execute(&mut self, stream_name: &str) -> Result<i64, Box<dyn Error>> {
         #[derive(sqlx::FromRow)]
         struct LastPosition(i64);
         let mut last_position = LastPosition(-1);
@@ -207,7 +205,7 @@ where
                 "SELECT write_message($1::varchar, $2::varchar, $3::varchar, $4::jsonb, $5::jsonb, $6::bigint);",
             )
                 .bind(id)
-                .bind(&self.stream_name)
+                .bind(stream_name)
                 .bind(&message.type_name)
                 .bind(&message.data)
                 .bind(&message.metadata)
@@ -221,5 +219,17 @@ where
         transaction.commit().await?;
 
         Ok(last_position.0)
+    }
+}
+
+impl<Executor: Clone + 'static> crate::HandlerParam for WriteMessages<Executor> {
+    type Error = Box<dyn Error>;
+
+    fn build(_: MessageData, resources: &crate::HandlerResources) -> Result<Self, Self::Error> {
+        let executor_resource: crate::Res<Executor> = resources.get().unwrap();
+        let executor = executor_resource.deref();
+        let writer = Self::new(Executor::clone(executor));
+
+        Ok(writer)
     }
 }

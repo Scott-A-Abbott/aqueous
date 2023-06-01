@@ -162,7 +162,7 @@ pub struct Msg<T> {
     pub metadata: Option<Metadata>,
 }
 
-impl<T> Msg<T> 
+impl<T> Msg<T>
 where
     for<'de> T: Message + Deserialize<'de>,
 {
