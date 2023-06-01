@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, collections::HashMap};
+use std::{collections::HashMap, marker::PhantomData};
 
 pub struct Store<Entity, Executor = sqlx::PgPool> {
     projections: Vec<Box<dyn Projection<Entity>>>,
@@ -17,13 +17,13 @@ impl<Entity, Executor> Store<Entity, Executor> {
 
     pub fn with_projection<F, Message>(&mut self, func: F) -> &mut Self
     where
-        for<'de> Message: crate::Message + serde::Deserialize<'de> +'static,
+        for<'de> Message: crate::Message + serde::Deserialize<'de> + 'static,
         F: FnMut(&mut Entity, crate::Msg<Message>) + 'static,
-        Entity: 'static
+        Entity: 'static,
     {
         let projection = IntoProjection::into_projection(func);
         let boxed_projection: Box<dyn Projection<Entity>> = Box::new(projection);
- 
+
         self.projections.push(boxed_projection);
 
         self
@@ -53,6 +53,22 @@ impl<Entity: Default> Store<Entity> {
     }
 }
 
+impl<Entity, Executor> crate::HandlerParam for Store<Entity, Executor>
+where
+    Executor: Clone + 'static,
+{
+    type Error = Box<dyn std::error::Error>;
+
+    fn build(_: crate::MessageData, resources: &crate::HandlerResources) -> Result<Self, Self::Error> {
+        use std::ops::Deref;
+
+        let executor_resource: crate::Res<Executor> = resources.get().unwrap();
+        let executor = executor_resource.deref();
+        let store = Store::new(executor.clone());
+        Ok(store)
+    }
+}
+
 pub trait Projection<Entity> {
     fn apply(&mut self, entity: &mut Entity, message_data: crate::MessageData);
     fn applies_message(&self, message_type: &str) -> bool;
@@ -64,7 +80,8 @@ pub struct FunctionProjection<Marker, F> {
     marker: PhantomData<Marker>,
 }
 
-impl<'e, Entity, Message, F> Projection<Entity> for FunctionProjection<(&'e mut Entity, crate::Msg<Message>), F> 
+impl<'e, Entity, Message, F> Projection<Entity>
+    for FunctionProjection<(&'e mut Entity, crate::Msg<Message>), F>
 where
     for<'de> Message: crate::Message + serde::Deserialize<'de>,
     F: FnMut(&mut Entity, crate::Msg<Message>),
@@ -88,7 +105,9 @@ where
     for<'de> Message: crate::Message + serde::Deserialize<'de>,
     F: FnMut(&mut Entity, crate::Msg<Message>),
 {
-    fn into_projection(this: Self) -> FunctionProjection<(&'e mut Entity, crate::Msg<Message>), Self> {
+    fn into_projection(
+        this: Self,
+    ) -> FunctionProjection<(&'e mut Entity, crate::Msg<Message>), Self> {
         FunctionProjection {
             func: this,
             message_type: Message::TYPE_NAME.to_owned(),
