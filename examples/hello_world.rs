@@ -61,7 +61,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 .execute(&stream_name)
                 .await
                 .unwrap();
-        }
+        },
     );
     handler.resources.insert(pool.clone());
 
@@ -89,16 +89,14 @@ struct AccountEntity {
 
 struct AccountStore(Store<AccountEntity, sqlx::PgPool>);
 impl HandlerParam for AccountStore {
-    type Error = Box<dyn Error>;
-
-    fn build(message_data: MessageData, resources: &HandlerResources) -> Result<Self, Self::Error> {
-        let mut store = Store::build(message_data, resources)?;
+    fn build(message_data: MessageData, resources: &HandlerResources) -> Self {
+        let mut store = Store::build(message_data, resources);
 
         store.with_projection(|account: &mut AccountEntity, message: Msg<Deposited>| {
             account.balance += message.amount;
         });
 
-        Ok(Self(store))
+        Self(store)
     }
 }
 
@@ -126,8 +124,7 @@ impl Message for Deposited {
 struct SomeParam(i32);
 
 impl HandlerParam for SomeParam {
-    type Error = Box<dyn Error>;
-    fn build(_: MessageData, _: &HandlerResources) -> Result<Self, Self::Error> {
-        Ok(Self(10))
+    fn build(_: MessageData, _: &HandlerResources) -> Self {
+        Self(10)
     }
 }

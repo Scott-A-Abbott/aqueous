@@ -14,12 +14,7 @@ pub trait Handler {
 }
 
 pub trait HandlerParam: Sized {
-    type Error: std::fmt::Debug;
-
-    fn build(
-        message_data: crate::MessageData,
-        resources: &HandlerResources,
-    ) -> Result<Self, Self::Error>;
+    fn build(message_data: crate::MessageData, resources: &HandlerResources) -> Self;
 }
 
 #[derive(Default)]
@@ -81,22 +76,17 @@ impl<T> DerefMut for Res<T> {
     }
 }
 impl<T: HandlerParam + 'static> HandlerParam for Res<T> {
-    type Error = Box<dyn Error>;
-
-    fn build(
-        message_data: crate::MessageData,
-        resources: &HandlerResources,
-    ) -> Result<Self, Self::Error> {
+    fn build(message_data: crate::MessageData, resources: &HandlerResources) -> Self {
         if resources.contains::<T>() {
             let resource = resources.get::<T>().unwrap();
-            Ok(resource)
+            resource
         } else {
-            let resource = T::build(message_data, resources).ok().unwrap();
+            let resource = T::build(message_data, resources);
 
             resources.insert(resource);
             let resource = resources.get::<T>().unwrap();
 
-            Ok(resource)
+            resource
         }
     }
 }
@@ -145,7 +135,7 @@ macro_rules! impl_handler {
             $re: std::future::Future<Output = ()>,
         {
             fn call(&mut self, message_data: crate::MessageData) {
-                $(let $ty = $ty::build(message_data.clone(), &self.resources).unwrap();)*
+                $(let $ty = $ty::build(message_data.clone(), &self.resources);)*
                 tokio::task::block_in_place(move || {
                     tokio::runtime::Handle::current().block_on(async move {
                         (self.func)($($ty,)*).await;

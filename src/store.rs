@@ -64,18 +64,13 @@ impl<Entity, Executor> crate::HandlerParam for Store<Entity, Executor>
 where
     Executor: Clone + 'static,
 {
-    type Error = Box<dyn std::error::Error>;
-
-    fn build(
-        _: crate::MessageData,
-        resources: &crate::HandlerResources,
-    ) -> Result<Self, Self::Error> {
+    fn build(_: crate::MessageData, resources: &crate::HandlerResources) -> Self {
         use std::ops::Deref;
 
         let executor_resource: crate::Res<Executor> = resources.get().unwrap();
         let executor = executor_resource.deref();
         let store = Store::new(executor.clone());
-        Ok(store)
+        store
     }
 }
 

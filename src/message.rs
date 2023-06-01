@@ -222,9 +222,7 @@ impl<T> crate::HandlerParam for Msg<T>
 where
     for<'de> T: Message + serde::Deserialize<'de>,
 {
-    type Error = Box<dyn Error>;
-
-    fn build(message_data: MessageData, _: &crate::HandlerResources) -> Result<Self, Self::Error> {
-        Msg::from_data(message_data)
+    fn build(message_data: MessageData, _: &crate::HandlerResources) -> Self {
+        Msg::from_data(message_data).unwrap()
     }
 }

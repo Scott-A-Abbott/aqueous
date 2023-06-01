@@ -236,13 +236,11 @@ where
 }
 
 impl<Executor: Clone + 'static> crate::HandlerParam for WriteMessages<Executor> {
-    type Error = Box<dyn Error>;
-
-    fn build(_: MessageData, resources: &crate::HandlerResources) -> Result<Self, Self::Error> {
+    fn build(_: MessageData, resources: &crate::HandlerResources) -> Self {
         let executor_resource: crate::Res<Executor> = resources.get().unwrap();
         let executor = executor_resource.deref();
         let writer = Self::new(Executor::clone(executor));
 
-        Ok(writer)
+        writer
     }
 }
