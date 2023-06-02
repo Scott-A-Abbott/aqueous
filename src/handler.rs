@@ -150,7 +150,27 @@ macro_rules! impl_handler {
    }
 }
 
+macro_rules! impl_into_handler_self {
+    ([$($ty:ident $(,)?)*], $re:ident)=> {
+        #[allow(non_snake_case, unused_mut)]
+        impl<Func, $($ty,)* $re> IntoHandler<($($ty,)*), $re, Func> for FunctionHandler<($($ty,)*), $re, Func>
+        where
+            Func: FnMut($($ty,)*) -> $re,
+        {
+            fn into_handler(self) -> Self {
+                self
+            }
+
+            fn insert_resource<Res: 'static>(self, resource: Res) -> Self {
+                self.resources.insert(resource);
+                self
+            }
+        }
+    }
+}
+
 all_tuples!(impl_handler);
+all_tuples!(impl_into_handler_self);
 
 #[rustfmt::skip]
 macro_rules! all_tuples_with_first {
