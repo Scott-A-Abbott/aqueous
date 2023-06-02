@@ -33,41 +33,38 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .await?;
 
     // HANDLING COMMANDS
-    let handler = IntoHandler::into_handler(
-        |deposit: Msg<Deposit>,
-         mut account_store: Res<AccountStore>,
-         mut some_param: Res<SomeParam>,
-         mut writer: WriteMessages<sqlx::PgPool>| async move {
-            let SomeParam(value) = some_param.deref_mut();
-            *value += 5;
-            println!("Some param: {}", value);
+    let handler = |deposit: Msg<Deposit>,
+                   mut account_store: Res<AccountStore>,
+                   mut some_param: Res<SomeParam>,
+                   mut writer: WriteMessages<sqlx::PgPool>| async move {
+        let SomeParam(value) = some_param.deref_mut();
+        *value += 5;
+        println!("Some param: {}", value);
 
-            let deposited = Deposited {
-                account_id: deposit.account_id,
-                amount: deposit.amount,
-                time: Utc::now(),
-            };
+        let deposited = Deposited {
+            account_id: deposit.account_id,
+            amount: deposit.amount,
+            time: Utc::now(),
+        };
 
-            let stream_name = format!("someAccountCategory-{}", deposit.account_id);
+        let stream_name = format!("someAccountCategory-{}", deposit.account_id);
 
-            let AccountStore(store) = account_store.deref_mut();
-            let (account, version) = store.fetch(&stream_name).await;
+        let AccountStore(store) = account_store.deref_mut();
+        let (account, version) = store.fetch(&stream_name).await;
 
-            println!("Account Balance: {}", account.balance);
+        println!("Account Balance: {}", account.balance);
 
-            writer
-                .with_message(deposited)
-                .expected_version(version)
-                .execute(&stream_name)
-                .await
-                .unwrap();
-        },
-    );
-    handler.resources.insert(pool.clone());
+        writer
+            .with_message(deposited)
+            .expected_version(version)
+            .execute(&stream_name)
+            .await
+            .unwrap();
+    };
 
-    let mut boxed_handler: Box<dyn Handler> = Box::new(handler);
+    let mut boxed_handler: Box<dyn Handler> = Box::new(handler.insert_resource(pool.clone()));
 
-    let messages = GetCategoryMessages::new(pool.clone(), "someAccountCategory")
+    let messages = GetCategoryMessages::new(pool.clone(), "someAccountCategory:command")
         .execute()
         .await?;
 

@@ -100,7 +100,10 @@ pub struct FunctionHandler<ParamsMarker, ReturnMarker, F> {
 
 pub trait IntoHandler<ParamsMarker, ReturnMarker, Func>: Sized {
     fn into_handler(self) -> FunctionHandler<ParamsMarker, ReturnMarker, Func>;
-    fn insert_resource<R: 'static>(self, resource: R) -> FunctionHandler<ParamsMarker, ReturnMarker, Func>;
+    fn insert_resource<R: 'static>(
+        self,
+        resource: R,
+    ) -> FunctionHandler<ParamsMarker, ReturnMarker, Func>;
 }
 
 #[rustfmt::skip]
