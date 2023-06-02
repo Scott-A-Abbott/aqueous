@@ -25,7 +25,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .map(|_| deposit.clone())
         .collect::<Vec<_>>();
 
-    let stream_name = format!("someAccountCategory-{}", deposit.account_id);
+    let stream_name = format!("someAccountCategory:command-{}", deposit.account_id);
 
     WriteMessages::new(pool.clone())
         .with_batch(&batch)
