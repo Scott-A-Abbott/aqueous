@@ -2,7 +2,6 @@ use std::{
     any::{Any, TypeId},
     cell::{RefCell, UnsafeCell},
     collections::HashMap,
-    error::Error,
     marker::PhantomData,
     ops::{Deref, DerefMut},
     rc::Rc,
@@ -99,8 +98,9 @@ pub struct FunctionHandler<ParamsMarker, ReturnMarker, F> {
     pub resources: HandlerResources,
 }
 
-pub trait IntoHandler<ParamsMarker, ReturnMarker>: Sized {
-    fn into_handler(this: Self) -> FunctionHandler<ParamsMarker, ReturnMarker, Self>;
+pub trait IntoHandler<ParamsMarker, ReturnMarker, Func>: Sized {
+    fn into_handler(self) -> FunctionHandler<ParamsMarker, ReturnMarker, Func>;
+    fn insert_resource<R: 'static>(self, resource: R) -> FunctionHandler<ParamsMarker, ReturnMarker, Func>;
 }
 
 #[rustfmt::skip]
@@ -177,20 +177,27 @@ macro_rules! all_tuples_with_first {
 macro_rules! impl_into_handler {
     ($first:ident, [$($ty:ident $(,)?)*], $re:ident) => {
         #[allow(non_snake_case, unused_mut)]
-        impl<Msg, F, $first, $($ty,)* $re> IntoHandler<($first, $($ty,)*), $re> for F
+        impl<Msg, Func, $first, $($ty,)* $re> IntoHandler<($first, $($ty,)*), $re, Func> for Func
         where
             Msg: crate::Message,
             $first: Deref<Target = Msg>,
-            F: FnMut($first, $($ty,)*) -> $re,
+            Func: FnMut($first, $($ty,)*) -> $re,
         {
-            fn into_handler(this: Self) -> FunctionHandler<($first, $($ty,)*), $re, Self> {
+            fn into_handler(self) -> FunctionHandler<($first, $($ty,)*), $re, Self> {
                 FunctionHandler {
-                    func: this,
+                    func: self,
                     params_marker: Default::default(),
                     return_marker: Default::default(),
                     message_type: Msg::TYPE_NAME.to_owned(),
                     resources: Default::default(),
                 }
+            }
+
+            fn insert_resource<Res: 'static>(self, resource: Res) -> FunctionHandler<($first, $($ty,)*), $re, Self> {
+                let handler = self.into_handler();
+                handler.resources.insert(resource);
+
+                handler
             }
         }
     }
