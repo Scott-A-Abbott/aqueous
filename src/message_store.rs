@@ -1,6 +1,6 @@
 use crate::MessageData;
 use sqlx::{Acquire, PgExecutor, Postgres};
-use std::{error::Error, ops::Deref};
+use std::error::Error;
 
 pub struct GetStreamMessages<Executor> {
     executor: Executor,
@@ -235,11 +235,9 @@ where
     }
 }
 
-impl<Executor: Clone + 'static> crate::HandlerParam for WriteMessages<Executor> {
-    fn build(_: MessageData, resources: &crate::HandlerResources) -> Self {
-        let executor_resource: crate::Res<Executor> = resources.get().unwrap();
-        let executor = executor_resource.deref();
-        let writer = Self::new(Executor::clone(executor));
+impl<Executor: Clone + 'static> crate::HandlerParam<Executor> for WriteMessages<Executor> {
+    fn build(_: MessageData, executor: Executor) -> Self {
+        let writer = Self::new(executor.clone());
 
         writer
     }

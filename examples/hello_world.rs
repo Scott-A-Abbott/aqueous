@@ -1,7 +1,8 @@
 use aqueous::*;
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{error::Error, ops::DerefMut};
+use sqlx::PgPool;
+use std::error::Error;
 use uuid::Uuid;
 
 #[tokio::main]
@@ -34,13 +35,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     // HANDLING COMMANDS
     let handler = |deposit: Msg<Deposit>,
-                   mut account_store: Res<AccountStore>,
-                   mut some_param: Res<SomeParam>,
-                   mut writer: WriteMessages<sqlx::PgPool>| async move {
-        let SomeParam(value) = some_param.deref_mut();
-        *value += 5;
-        println!("Some param: {}", value);
-
+                   mut writer: WriteMessages<PgPool>,
+                   AccountStore(mut store): AccountStore| async move {
         let deposited = Deposited {
             account_id: deposit.account_id,
             amount: deposit.amount,
@@ -49,7 +45,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
         let stream_name = format!("someAccountCategory-{}", deposit.account_id);
 
-        let AccountStore(store) = account_store.deref_mut();
         let (account, version) = store.fetch(&stream_name).await;
 
         println!("Account Balance: {}", account.balance);
@@ -62,7 +57,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             .unwrap();
     };
 
-    let mut boxed_handler: Box<dyn Handler> = Box::new(handler.insert_resource(pool.clone()));
+    let mut boxed_handler: Box<dyn Handler<PgPool>> = Box::new(handler.into_handler());
 
     let messages = GetCategoryMessages::new(pool.clone(), "someAccountCategory:command")
         .execute()
@@ -71,7 +66,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     println!("Message count: {}", messages.len());
 
     for message_data in messages.into_iter() {
-        boxed_handler.call(message_data);
+        boxed_handler.call(message_data, pool.clone());
     }
 
     Ok(())
@@ -82,10 +77,10 @@ struct AccountEntity {
     pub balance: i64,
 }
 
-struct AccountStore(Store<AccountEntity, sqlx::PgPool>);
-impl HandlerParam for AccountStore {
-    fn build(message_data: MessageData, resources: &HandlerResources) -> Self {
-        let mut store = Store::build(message_data, resources);
+struct AccountStore(Store<AccountEntity, PgPool>);
+impl HandlerParam<PgPool> for AccountStore {
+    fn build(message_data: MessageData, executor: PgPool) -> Self {
+        let mut store = Store::build(message_data, executor.clone());
 
         store.with_projection(|account: &mut AccountEntity, message: Msg<Deposited>| {
             account.balance += message.amount;
@@ -113,13 +108,4 @@ struct Deposited {
 }
 impl Message for Deposited {
     const TYPE_NAME: &'static str = "Deposited";
-}
-
-#[derive(Debug)]
-struct SomeParam(i32);
-
-impl HandlerParam for SomeParam {
-    fn build(_: MessageData, _: &HandlerResources) -> Self {
-        Self(10)
-    }
 }

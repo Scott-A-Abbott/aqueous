@@ -218,11 +218,11 @@ impl<T: Clone> Clone for Msg<T> {
     }
 }
 
-impl<T> crate::HandlerParam for Msg<T>
+impl<T, E> crate::HandlerParam<E> for Msg<T>
 where
     for<'de> T: Message + serde::Deserialize<'de>,
 {
-    fn build(message_data: MessageData, _: &crate::HandlerResources) -> Self {
+    fn build(message_data: MessageData, _: E) -> Self {
         Msg::from_data(message_data).unwrap()
     }
 }

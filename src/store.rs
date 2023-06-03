@@ -66,15 +66,11 @@ impl<Entity: Default> Store<Entity> {
     }
 }
 
-impl<Entity, Executor> crate::HandlerParam for Store<Entity, Executor>
+impl<Entity, Executor> crate::HandlerParam<Executor> for Store<Entity, Executor>
 where
     Executor: Clone + 'static,
 {
-    fn build(_: crate::MessageData, resources: &crate::HandlerResources) -> Self {
-        use std::ops::Deref;
-
-        let executor_resource: crate::Res<Executor> = resources.get().unwrap();
-        let executor = executor_resource.deref();
+    fn build(_: crate::MessageData, executor: Executor) -> Self {
         let store = Store::new(executor.clone());
         store
     }
