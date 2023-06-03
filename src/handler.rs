@@ -9,7 +9,6 @@ use std::{
 
 pub trait Handler {
     fn call(&mut self, message_data: crate::MessageData);
-    fn handles_message(&self, message_type: &str) -> bool;
 }
 
 pub trait HandlerParam: Sized {
@@ -128,31 +127,6 @@ macro_rules! all_tuples {
     };
 }
 
-macro_rules! impl_handler {
-   ([$($ty:ident $(,)?)*], $re:ident)=> {
-        #[allow(non_snake_case, unused_mut)]
-        impl<$($ty,)* $re, F> Handler for FunctionHandler<($($ty,)*), $re, F>
-        where
-            $($ty: HandlerParam,)*
-            F: FnMut($($ty,)*) -> $re,
-            $re: std::future::Future<Output = ()>,
-        {
-            fn call(&mut self, message_data: crate::MessageData) {
-                $(let $ty = $ty::build(message_data.clone(), &self.resources);)*
-                tokio::task::block_in_place(move || {
-                    tokio::runtime::Handle::current().block_on(async move {
-                        (self.func)($($ty,)*).await;
-                    });
-                });
-            }
-
-            fn handles_message(&self, message_type: &str) -> bool {
-                message_type == self.message_type.as_str()
-            }
-        }
-   }
-}
-
 macro_rules! impl_into_handler_self {
     ([$($ty:ident $(,)?)*], $re:ident)=> {
         #[allow(non_snake_case, unused_mut)]
@@ -172,7 +146,6 @@ macro_rules! impl_into_handler_self {
     }
 }
 
-all_tuples!(impl_handler);
 all_tuples!(impl_into_handler_self);
 
 #[rustfmt::skip]
@@ -195,6 +168,31 @@ macro_rules! all_tuples_with_first {
         $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15], R);
         $macro_name!(T1, [T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16], R);
     };
+}
+
+macro_rules! impl_handler {
+   ($first:ident, [$($ty:ident $(,)?)*], $re:ident)=> {
+        #[allow(non_snake_case, unused_mut)]
+        impl<$first, $($ty,)* $re, F> Handler for FunctionHandler<(crate::Msg<$first>, $($ty,)*), $re, F>
+        where
+            for<'de> $first: crate::Message + serde::Deserialize<'de>,
+            $($ty: HandlerParam,)*
+            F: FnMut(crate::Msg<$first>, $($ty,)*) -> $re,
+            $re: std::future::Future<Output = ()>,
+        {
+            fn call(&mut self, message_data: crate::MessageData) {
+                if message_data.type_name == $first::TYPE_NAME.to_string() {
+                    let msg: crate::Msg<$first> = crate::Msg::build(message_data.clone(), &self.resources);
+                    $(let $ty = $ty::build(message_data.clone(), &self.resources);)*
+                    tokio::task::block_in_place(move || {
+                        tokio::runtime::Handle::current().block_on(async move {
+                            (self.func)(msg, $($ty,)*).await;
+                        });
+                    });
+                }
+            }
+        }
+    }
 }
 
 macro_rules! impl_into_handler {
@@ -226,4 +224,5 @@ macro_rules! impl_into_handler {
     }
 }
 
+all_tuples_with_first!(impl_handler);
 all_tuples_with_first!(impl_into_handler);

@@ -71,9 +71,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     println!("Message count: {}", messages.len());
 
     for message_data in messages.into_iter() {
-        if boxed_handler.handles_message(&message_data.type_name) {
-            boxed_handler.call(message_data);
-        }
+        boxed_handler.call(message_data);
     }
 
     Ok(())
