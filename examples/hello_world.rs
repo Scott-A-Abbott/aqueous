@@ -72,12 +72,13 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct AccountEntity {
     pub balance: i64,
 }
 
 struct AccountStore(Store<AccountEntity, PgPool>);
+
 impl HandlerParam<PgPool> for AccountStore {
     fn build(message_data: MessageData, executor: PgPool) -> Self {
         let mut store = Store::build(message_data, executor.clone());
