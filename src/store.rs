@@ -1,4 +1,11 @@
-use std::{collections::HashMap, marker::PhantomData};
+use moka::future::Cache;
+use std::{
+    any::{Any, TypeId},
+    marker::PhantomData,
+    sync::{Arc, OnceLock},
+};
+
+static ENTITY_CACHE: OnceLock<Cache<TypeId, Arc<Box<dyn Any + Send + Sync>>>> = OnceLock::new();
 
 #[derive(Copy, Clone)]
 pub struct Version(pub i64);
@@ -15,15 +22,18 @@ impl Default for Version {
 
 pub struct Store<Entity, Executor = sqlx::PgPool> {
     projections: Vec<Box<dyn Projection<Entity>>>,
-    entries: HashMap<String, (Entity, Version)>,
+    cache: Cache<String, (Entity, Version)>,
     executor: Executor,
 }
 
-impl<Entity, Executor> Store<Entity, Executor> {
-    pub fn new(executor: Executor) -> Self {
+impl<Entity, Executor> Store<Entity, Executor>
+where
+    Entity: Clone + Send + Sync + 'static,
+{
+    pub fn new(executor: Executor, cache: Cache<String, (Entity, Version)>) -> Self {
         Self {
             projections: Vec::new(),
-            entries: HashMap::new(),
+            cache,
             executor,
         }
     }
@@ -43,9 +53,18 @@ impl<Entity, Executor> Store<Entity, Executor> {
     }
 }
 
-impl<Entity: Default> Store<Entity> {
-    pub async fn fetch(&mut self, stream_name: &str) -> (&Entity, Version) {
-        let (entity, version) = self.entries.entry(String::from(stream_name)).or_default();
+impl<Entity> Store<Entity>
+where
+    Entity: Default + Clone + Send + Sync + 'static,
+{
+    pub async fn fetch(&mut self, stream_name: &str) -> (Entity, Version) {
+        let (mut entity, mut version) = self
+            .cache
+            .get_with(stream_name.to_string(), async {
+                (Entity::default(), Version::default())
+            })
+            .await;
+
         let messages = crate::GetStreamMessages::new(self.executor.clone(), stream_name)
             .position(version.0)
             .execute()
@@ -54,36 +73,58 @@ impl<Entity: Default> Store<Entity> {
 
         for message in messages {
             for projection in self.projections.iter_mut() {
-                if projection.applies_message(&message.type_name) {
-                    projection.apply(entity, message.clone());
-                }
+                projection.apply(&mut entity, message.clone());
             }
 
             version.0 = message.position;
         }
 
-        (entity, *version)
+        self.cache
+            .insert(stream_name.to_string(), (entity.clone(), version.clone()))
+            .await;
+
+        (entity, version)
     }
 }
 
 impl<Entity, Executor> crate::HandlerParam<Executor> for Store<Entity, Executor>
 where
+    Entity: Clone + Send + Sync + 'static,
     Executor: Clone + 'static,
 {
     fn build(_: crate::MessageData, executor: Executor) -> Self {
-        let store = Store::new(executor.clone());
-        store
+        tokio::task::block_in_place(move || {
+            tokio::runtime::Handle::current().block_on(async move {
+                let entity_cache = ENTITY_CACHE.get_or_init(|| Cache::new(5));
+                let cache_any = entity_cache
+                    .get_with(
+                        TypeId::of::<Cache<String, (Entity, Version)>>(),
+                        async move {
+                            let cache: Cache<String, (Entity, Version)> = Cache::new(10_000);
+                            let boxed_cache: Box<dyn Any + Send + Sync> = Box::new(cache);
+
+                            Arc::new(boxed_cache)
+                        },
+                    )
+                    .await;
+
+                let cache = cache_any
+                    .downcast_ref::<Cache<String, (Entity, Version)>>()
+                    .unwrap();
+
+                let store = Store::new(executor.clone(), cache.clone());
+                store
+            })
+        })
     }
 }
 
 pub trait Projection<Entity> {
     fn apply(&mut self, entity: &mut Entity, message_data: crate::MessageData);
-    fn applies_message(&self, message_type: &str) -> bool;
 }
 
 pub struct FunctionProjection<Marker, F> {
     func: F,
-    message_type: String,
     marker: PhantomData<Marker>,
 }
 
@@ -94,12 +135,10 @@ where
     F: FnMut(&mut Entity, crate::Msg<Message>),
 {
     fn apply(&mut self, entity: &mut Entity, message_data: crate::MessageData) {
-        let msg = crate::Msg::<Message>::from_data(message_data).unwrap();
-        (self.func)(entity, msg);
-    }
-
-    fn applies_message(&self, message_type: &str) -> bool {
-        message_type == self.message_type
+        if message_data.type_name == Message::TYPE_NAME.to_string() {
+            let msg = crate::Msg::<Message>::from_data(message_data).unwrap();
+            (self.func)(entity, msg);
+        }
     }
 }
 
@@ -117,7 +156,6 @@ where
     ) -> FunctionProjection<(&'e mut Entity, crate::Msg<Message>), Self> {
         FunctionProjection {
             func: this,
-            message_type: Message::TYPE_NAME.to_owned(),
             marker: Default::default(),
         }
     }
