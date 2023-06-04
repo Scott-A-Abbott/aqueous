@@ -40,17 +40,15 @@ where
 
 pub struct GetStreamMessages<Executor> {
     executor: Executor,
-    stream_name: String,
     position: Option<i64>,
     batch_size: Option<i64>,
     condition: Option<String>,
 }
 
 impl<Executor> GetStreamMessages<Executor> {
-    pub fn new(executor: Executor, stream_name: &str) -> Self {
+    pub fn new(executor: Executor) -> Self {
         Self {
             executor,
-            stream_name: stream_name.to_owned(),
             position: None,
             batch_size: None,
             condition: None,
@@ -77,11 +75,11 @@ impl<Executor> GetStreamMessages<Executor>
 where
     for<'e, 'c> &'e Executor: PgExecutor<'c>,
 {
-    pub async fn execute(&mut self) -> Result<Vec<MessageData>, Box<dyn Error>> {
+    pub async fn execute(&mut self, stream_name: &str) -> Result<Vec<MessageData>, Box<dyn Error>> {
         sqlx::query_as(
             "SELECT * from get_stream_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar);",
         )
-        .bind(&self.stream_name)
+        .bind(stream_name)
         .bind(self.position.unwrap_or_else(|| 0))
         .bind(self.batch_size.unwrap_or_else(|| 1000))
         .bind(&self.condition)
