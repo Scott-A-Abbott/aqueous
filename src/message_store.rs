@@ -21,19 +21,20 @@ impl<Executor> GetLastStreamMessage<Executor> {
     }
 }
 
-impl<Executor> GetLastStreamMessage<Executor> 
+impl<Executor> GetLastStreamMessage<Executor>
 where
     for<'e, 'c> &'e Executor: PgExecutor<'c>,
 {
-    pub async fn execute(&mut self, stream_name: &str) -> Result<Option<MessageData>, Box<dyn Error>> {
-        sqlx::query_as(
-            "SELECT * from get_last_stream_message($1::varchar, $2::varchar);",
-        )
-        .bind(stream_name)
-        .bind(&self.message_type)
-        .fetch_optional(&self.executor)
-        .await
-        .map_err(|e| e.into())
+    pub async fn execute(
+        &mut self,
+        stream_name: &str,
+    ) -> Result<Option<MessageData>, Box<dyn Error>> {
+        sqlx::query_as("SELECT * from get_last_stream_message($1::varchar, $2::varchar);")
+            .bind(stream_name)
+            .bind(&self.message_type)
+            .fetch_optional(&self.executor)
+            .await
+            .map_err(|e| e.into())
     }
 }
 
