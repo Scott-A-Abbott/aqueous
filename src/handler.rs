@@ -21,7 +21,7 @@ pub trait IntoHandler<ExecutorMarker, ParamsMarker, ReturnMarker, Func>: Sized {
 }
 
 #[rustfmt::skip]
-macro_rules! all_tuples {
+macro_rules! function_params {
     ($macro_name:ident) => {
         $macro_name!([T1], R);
         $macro_name!([T1, T2], R);
@@ -56,10 +56,10 @@ macro_rules! impl_into_handler_self {
     }
 }
 
-all_tuples!(impl_into_handler_self);
+function_params!(impl_into_handler_self);
 
 #[rustfmt::skip]
-macro_rules! all_tuples_with_first {
+macro_rules! function_params_with_first {
     ($macro_name:ident) => {
         $macro_name!(T1, [], R);
         $macro_name!(T1, [T2], R);
@@ -127,5 +127,5 @@ macro_rules! impl_into_handler {
     }
 }
 
-all_tuples_with_first!(impl_handler);
-all_tuples_with_first!(impl_into_handler);
+function_params_with_first!(impl_handler);
+function_params_with_first!(impl_into_handler);
