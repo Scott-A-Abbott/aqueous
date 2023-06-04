@@ -66,7 +66,7 @@ where
             .await;
 
         let messages = crate::GetStreamMessages::new(self.executor.clone(), stream_name)
-            .position(version.0)
+            .position(version.0 + 1)
             .execute()
             .await
             .unwrap();
