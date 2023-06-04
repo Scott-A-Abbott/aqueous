@@ -1,4 +1,4 @@
-use crate::MessageData;
+use crate::{MessageData, HandlerParam, Version, Message, Msg};
 use sqlx::{Acquire, PgExecutor, Postgres};
 use std::error::Error;
 
@@ -134,7 +134,7 @@ where
 
 pub struct WriteMessages<Executor> {
     executor: Executor,
-    expected_version: Option<crate::Version>,
+    expected_version: Option<Version>,
     messages: Vec<WriteMessageData>,
 }
 
@@ -155,16 +155,21 @@ impl<Executor> WriteMessages<Executor> {
         }
     }
 
-    pub fn expected_version(&mut self, expected_version: crate::Version) -> &mut Self {
+    pub fn expected_version(&mut self, expected_version: Version) -> &mut Self {
         self.expected_version = Some(expected_version);
+        self
+    }
+
+    pub fn initial(&mut self) -> &mut Self {
+        self.expected_version = Some(Version::initial());
         self
     }
 
     pub fn with_message<T>(&mut self, message: T) -> &mut Self
     where
-        T: serde::Serialize + crate::Message + Into<crate::Msg<T>>,
+        T: serde::Serialize + Message + Into<Msg<T>>,
     {
-        let msg: crate::Msg<T> = message.into();
+        let msg: Msg<T> = message.into();
         let message_data = WriteMessageData {
             type_name: T::TYPE_NAME.to_owned(),
             data: serde_json::to_string(&msg.data).unwrap(),
@@ -177,7 +182,7 @@ impl<Executor> WriteMessages<Executor> {
 
     pub fn with_batch<T>(&mut self, batch: impl AsRef<[T]>) -> &mut Self
     where
-        T: serde::Serialize + crate::Message + Clone + Into<crate::Msg<T>>,
+        T: serde::Serialize + Message + Clone + Into<Msg<T>>,
     {
         for message in batch.as_ref().iter() {
             self.with_message(message.clone());
@@ -203,7 +208,7 @@ where
             let version = self
                 .expected_version
                 .as_ref()
-                .map(|crate::Version(value)| value);
+                .map(|Version(value)| value);
 
             last_position = sqlx::query_as(
                 "SELECT write_message($1::varchar, $2::varchar, $3::varchar, $4::jsonb, $5::jsonb, $6::bigint);",
@@ -220,7 +225,7 @@ where
             self.expected_version = self
                 .expected_version
                 .as_mut()
-                .map(|crate::Version(value)| crate::Version(*value + 1));
+                .map(|Version(value)| Version(*value + 1));
         }
 
         transaction.commit().await?;
@@ -235,7 +240,7 @@ where
     }
 }
 
-impl<Executor: Clone + 'static> crate::HandlerParam<Executor> for WriteMessages<Executor> {
+impl<Executor: Clone + 'static> HandlerParam<Executor> for WriteMessages<Executor> {
     fn build(_: MessageData, executor: Executor) -> Self {
         let writer = Self::new(executor.clone());
 

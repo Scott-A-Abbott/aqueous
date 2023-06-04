@@ -4,6 +4,7 @@ use std::{
     marker::PhantomData,
     sync::{Arc, OnceLock},
 };
+use crate::*;
 
 static ENTITY_CACHE: OnceLock<Cache<TypeId, Arc<Box<dyn Any + Send + Sync>>>> = OnceLock::new();
 
@@ -38,10 +39,10 @@ where
         }
     }
 
-    pub fn with_projection<F, Message>(&mut self, func: F) -> &mut Self
+    pub fn with_projection<F, M>(&mut self, func: F) -> &mut Self
     where
-        for<'de> Message: crate::Message + serde::Deserialize<'de> + 'static,
-        F: FnMut(&mut Entity, crate::Msg<Message>) + 'static,
+        for<'de> M: Message + serde::Deserialize<'de> + 'static,
+        F: FnMut(&mut Entity, Msg<M>) + 'static,
         Entity: 'static,
     {
         let projection = IntoProjection::into_projection(func);
@@ -65,7 +66,7 @@ where
             })
             .await;
 
-        let messages = crate::GetStreamMessages::new(self.executor.clone(), stream_name)
+        let messages = GetStreamMessages::new(self.executor.clone(), stream_name)
             .position(version.0 + 1)
             .execute()
             .await
@@ -87,12 +88,12 @@ where
     }
 }
 
-impl<Entity, Executor> crate::HandlerParam<Executor> for Store<Entity, Executor>
+impl<Entity, Executor> HandlerParam<Executor> for Store<Entity, Executor>
 where
     Entity: Clone + Send + Sync + 'static,
     Executor: Clone + 'static,
 {
-    fn build(_: crate::MessageData, executor: Executor) -> Self {
+    fn build(_: MessageData, executor: Executor) -> Self {
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
                 let entity_cache = ENTITY_CACHE.get_or_init(|| Cache::new(5));
@@ -120,7 +121,7 @@ where
 }
 
 pub trait Projection<Entity> {
-    fn apply(&mut self, entity: &mut Entity, message_data: crate::MessageData);
+    fn apply(&mut self, entity: &mut Entity, message_data: MessageData);
 }
 
 pub struct FunctionProjection<Marker, F> {
@@ -128,15 +129,15 @@ pub struct FunctionProjection<Marker, F> {
     marker: PhantomData<Marker>,
 }
 
-impl<'e, Entity, Message, F> Projection<Entity>
-    for FunctionProjection<(&'e mut Entity, crate::Msg<Message>), F>
+impl<'e, Entity, M, F> Projection<Entity>
+    for FunctionProjection<(&'e mut Entity, Msg<M>), F>
 where
-    for<'de> Message: crate::Message + serde::Deserialize<'de>,
-    F: FnMut(&mut Entity, crate::Msg<Message>),
+    for<'de> M: Message + serde::Deserialize<'de>,
+    F: FnMut(&mut Entity, Msg<M>),
 {
-    fn apply(&mut self, entity: &mut Entity, message_data: crate::MessageData) {
-        if message_data.type_name == Message::TYPE_NAME.to_string() {
-            let msg = crate::Msg::<Message>::from_data(message_data).unwrap();
+    fn apply(&mut self, entity: &mut Entity, message_data: MessageData) {
+        if message_data.type_name == M::TYPE_NAME.to_string() {
+            let msg = Msg::<M>::from_data(message_data).unwrap();
             (self.func)(entity, msg);
         }
     }
@@ -146,14 +147,14 @@ pub trait IntoProjection<Marker>: Sized {
     fn into_projection(this: Self) -> FunctionProjection<Marker, Self>;
 }
 
-impl<'e, Entity, Message, F> IntoProjection<(&'e mut Entity, crate::Msg<Message>)> for F
+impl<'e, Entity, M, F> IntoProjection<(&'e mut Entity, Msg<M>)> for F
 where
-    for<'de> Message: crate::Message + serde::Deserialize<'de>,
-    F: FnMut(&mut Entity, crate::Msg<Message>),
+    for<'de> M: Message + serde::Deserialize<'de>,
+    F: FnMut(&mut Entity, Msg<M>),
 {
     fn into_projection(
         this: Self,
-    ) -> FunctionProjection<(&'e mut Entity, crate::Msg<Message>), Self> {
+    ) -> FunctionProjection<(&'e mut Entity, Msg<M>), Self> {
         FunctionProjection {
             func: this,
             marker: Default::default(),

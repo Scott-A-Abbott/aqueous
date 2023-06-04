@@ -2,6 +2,7 @@ use chrono::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{error::Error, ops::Deref};
+use crate::HandlerParam;
 
 #[derive(sqlx::FromRow, Debug, Clone)]
 pub struct MessageData {
@@ -218,7 +219,7 @@ impl<T: Clone> Clone for Msg<T> {
     }
 }
 
-impl<T, E> crate::HandlerParam<E> for Msg<T>
+impl<T, E> HandlerParam<E> for Msg<T>
 where
     for<'de> T: Message + serde::Deserialize<'de>,
 {
