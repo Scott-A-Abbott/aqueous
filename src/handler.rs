@@ -1,5 +1,5 @@
+use crate::{Message, MessageData, Msg};
 use std::{marker::PhantomData, ops::Deref};
-use crate::{MessageData, Msg, Message};
 
 pub trait Handler<Executor> {
     fn call(&mut self, message_data: MessageData, executor: Executor);

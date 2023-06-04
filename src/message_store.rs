@@ -1,4 +1,4 @@
-use crate::{MessageData, HandlerParam, Version, Message, Msg};
+use crate::{HandlerParam, Message, MessageData, Msg, Version};
 use sqlx::{Acquire, PgExecutor, Postgres};
 use std::error::Error;
 
@@ -205,10 +205,7 @@ where
 
         for message in self.messages.iter() {
             let id = uuid::Uuid::new_v4().to_string();
-            let version = self
-                .expected_version
-                .as_ref()
-                .map(|Version(value)| value);
+            let version = self.expected_version.as_ref().map(|Version(value)| value);
 
             last_position = sqlx::query_as(
                 "SELECT write_message($1::varchar, $2::varchar, $3::varchar, $4::jsonb, $5::jsonb, $6::bigint);",

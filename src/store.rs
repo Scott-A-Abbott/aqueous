@@ -1,10 +1,10 @@
+use crate::*;
 use moka::future::Cache;
 use std::{
     any::{Any, TypeId},
     marker::PhantomData,
     sync::{Arc, OnceLock},
 };
-use crate::*;
 
 static ENTITY_CACHE: OnceLock<Cache<TypeId, Arc<Box<dyn Any + Send + Sync>>>> = OnceLock::new();
 
@@ -129,8 +129,7 @@ pub struct FunctionProjection<Marker, F> {
     marker: PhantomData<Marker>,
 }
 
-impl<'e, Entity, M, F> Projection<Entity>
-    for FunctionProjection<(&'e mut Entity, Msg<M>), F>
+impl<'e, Entity, M, F> Projection<Entity> for FunctionProjection<(&'e mut Entity, Msg<M>), F>
 where
     for<'de> M: Message + serde::Deserialize<'de>,
     F: FnMut(&mut Entity, Msg<M>),
@@ -152,9 +151,7 @@ where
     for<'de> M: Message + serde::Deserialize<'de>,
     F: FnMut(&mut Entity, Msg<M>),
 {
-    fn into_projection(
-        this: Self,
-    ) -> FunctionProjection<(&'e mut Entity, Msg<M>), Self> {
+    fn into_projection(this: Self) -> FunctionProjection<(&'e mut Entity, Msg<M>), Self> {
         FunctionProjection {
             func: this,
             marker: Default::default(),

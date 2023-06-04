@@ -1,8 +1,8 @@
+use crate::HandlerParam;
 use chrono::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{error::Error, ops::Deref};
-use crate::HandlerParam;
 
 #[derive(sqlx::FromRow, Debug, Clone)]
 pub struct MessageData {
