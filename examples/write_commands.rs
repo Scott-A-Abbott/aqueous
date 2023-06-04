@@ -16,9 +16,7 @@ impl Message for Deposit {
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    const MAX_CONNECTIONS: u32 = 1;
     let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(MAX_CONNECTIONS)
         .connect("postgres://message_store@localhost/message_store")
         .await?;
 
