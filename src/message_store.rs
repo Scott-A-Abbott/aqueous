@@ -2,6 +2,41 @@ use crate::{HandlerParam, Message, MessageData, Msg, Version};
 use sqlx::{Acquire, PgExecutor, Postgres};
 use std::error::Error;
 
+pub struct GetLastStreamMessage<Executor> {
+    executor: Executor,
+    message_type: Option<String>,
+}
+
+impl<Executor> GetLastStreamMessage<Executor> {
+    pub fn new(executor: Executor) -> Self {
+        Self {
+            executor,
+            message_type: None,
+        }
+    }
+
+    pub fn message_type(mut self, message_type: &str) -> Self {
+        self.message_type = Some(message_type.to_string());
+        self
+    }
+}
+
+impl<Executor> GetLastStreamMessage<Executor> 
+where
+    for<'e, 'c> &'e Executor: PgExecutor<'c>,
+{
+    pub async fn execute(&mut self, stream_name: &str) -> Result<Option<MessageData>, Box<dyn Error>> {
+        sqlx::query_as(
+            "SELECT * from get_last_stream_message($1::varchar, $2::varchar);",
+        )
+        .bind(stream_name)
+        .bind(&self.message_type)
+        .fetch_optional(&self.executor)
+        .await
+        .map_err(|e| e.into())
+    }
+}
+
 pub struct GetStreamMessages<Executor> {
     executor: Executor,
     stream_name: String,
