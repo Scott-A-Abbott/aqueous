@@ -1,6 +1,6 @@
 use crate::{FunctionHandler, GetCategoryMessages, Handler, IntoHandler, MessageData};
 use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::mpsc::{channel, Sender},
     time::{interval, Duration, Interval, MissedTickBehavior},
 };
 
