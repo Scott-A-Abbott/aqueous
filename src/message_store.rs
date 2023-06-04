@@ -57,7 +57,7 @@ where
 
 pub struct GetCategoryMessages<Executor> {
     executor: Executor,
-    category_name: String,
+    category: String,
     position: Option<i64>,
     batch_size: Option<i64>,
     correlation: Option<String>,
@@ -67,10 +67,10 @@ pub struct GetCategoryMessages<Executor> {
 }
 
 impl<Executor> GetCategoryMessages<Executor> {
-    pub fn new(executor: Executor, stream_name: &str) -> Self {
+    pub fn new(executor: Executor, category: &str) -> Self {
         Self {
             executor,
-            category_name: stream_name.to_owned(),
+            category: category.to_owned(),
             position: None,
             batch_size: None,
             correlation: None,
@@ -119,7 +119,7 @@ where
         sqlx::query_as(
             "SELECT * FROM get_category_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar, $5::bigint, $6::bigint, $7::varchar);",
         )
-        .bind(&self.category_name)
+        .bind(&self.category)
         .bind(self.position.unwrap_or_else(|| 0))
         .bind(self.batch_size.unwrap_or_else(|| 1000))
         .bind(&self.correlation)
