@@ -36,6 +36,8 @@ async fn handler(
 
     let (account, version) = store.fetch(&stream_name).await;
 
+    println!("Depositing {} into account {} with balance {}", deposited.amount, account.id, account.balance);
+
     writer
         .with_message(deposited)
         .expected_version(version)
@@ -46,6 +48,7 @@ async fn handler(
 
 #[derive(Debug, Clone, Default)]
 struct AccountEntity {
+    pub id: Uuid,
     pub balance: i64,
 }
 
@@ -56,6 +59,7 @@ impl HandlerParam<PgPool> for AccountStore {
         let mut store = Store::build(message_data, executor.clone());
 
         store.with_projection(|account: &mut AccountEntity, message: Msg<Deposited>| {
+            account.id = message.account_id;
             account.balance += message.amount;
         });
 

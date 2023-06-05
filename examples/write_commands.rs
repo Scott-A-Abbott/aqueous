@@ -39,5 +39,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .execute(&stream_name)
         .await?;
 
+    println!("Wrote 10 Deposit commands");
+
     Ok(())
 }
