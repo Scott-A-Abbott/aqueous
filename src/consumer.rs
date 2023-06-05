@@ -1,4 +1,7 @@
-use crate::{FunctionHandler, GetCategoryMessages, Handler, IntoHandler, MessageData};
+use crate::{
+    FunctionHandler, GetCategoryMessages, Handler, IntoHandler, Message, MessageData, WriteMessages,
+};
+use serde::{Deserialize, Serialize};
 use tokio::{
     sync::mpsc::{channel, Sender},
     time::{interval, Duration, Interval, MissedTickBehavior},
@@ -61,6 +64,11 @@ impl<Executor: Clone> Consumer<Executor> {
         self
     }
 
+    pub fn position_update_interval(mut self, interval: u64) -> Self {
+        self.position_update_interval = interval;
+        self
+    }
+
     pub async fn dispatch(&mut self, message_data: MessageData) {
         for handler in self.handlers.iter_mut() {
             let message_data = message_data.clone();
@@ -93,8 +101,34 @@ impl Consumer<sqlx::PgPool> {
 
         loop {
             if let Some(message_data) = dispatch_receiver.recv().await {
+                let update_position = message_data.global_position;
+
                 self.dispatch(message_data).await;
+                self.update_position(update_position).await;
             }
+        }
+    }
+
+    pub async fn update_position(&mut self, position: i64) {
+        self.position_update_counter += 1;
+
+        let mut write = WriteMessages::new(self.executor.clone());
+        write.with_message(Recorded { position });
+
+        if self.position_update_counter >= self.position_update_interval {
+            let mut stream_name = match self.category.split(":").collect::<Vec<_>>()[..] {
+                [entity_id] => format!("{}:position", entity_id),
+                [entity_id, types] => format!("{}:{}+position", entity_id, types),
+                _ => self.category.clone(),
+            };
+
+            if let Some(identifier) = self.identifier.as_ref() {
+                stream_name = format!("{}+{}", stream_name, identifier);
+            }
+            
+            write.execute(&stream_name).await.unwrap();
+
+            self.position_update_counter = 0;
         }
     }
 }
@@ -162,4 +196,13 @@ impl Subscribtion<sqlx::PgPool> {
             }
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Recorded {
+    position: i64,
+}
+
+impl Message for Recorded {
+    const TYPE_NAME: &'static str = "Recorded";
 }
