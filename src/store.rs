@@ -66,9 +66,9 @@ where
             })
             .await;
 
-        let messages = GetStreamMessages::new(self.executor.clone(), stream_name)
+        let messages = GetStreamMessages::new(self.executor.clone())
             .position(version.0 + 1)
-            .execute()
+            .execute(stream_name)
             .await
             .unwrap();
 
