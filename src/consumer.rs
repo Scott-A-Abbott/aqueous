@@ -1,5 +1,6 @@
 use crate::{
-    FunctionHandler, GetCategoryMessages, Handler, IntoHandler, Message, MessageData, WriteMessages,
+    FunctionHandler, GetCategoryMessages, GetLastStreamMessage, Handler, IntoHandler, Message,
+    MessageData, Msg, WriteMessages,
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -69,6 +70,20 @@ impl<Executor: Clone> Consumer<Executor> {
         self
     }
 
+    pub fn position_stream_name(&self) -> String {
+        let mut stream_name = match self.category.split(":").collect::<Vec<_>>()[..] {
+            [entity_id] => format!("{}:position", entity_id),
+            [entity_id, types] => format!("{}:{}+position", entity_id, types),
+            _ => self.category.clone(),
+        };
+
+        if let Some(identifier) = self.identifier.as_ref() {
+            stream_name = format!("{}+{}", stream_name, identifier);
+        }
+
+        stream_name
+    }
+
     pub async fn dispatch(&mut self, message_data: MessageData) {
         for handler in self.handlers.iter_mut() {
             let message_data = message_data.clone();
@@ -123,20 +138,22 @@ where
         write.with_message(Recorded { position });
 
         if self.position_update_counter >= self.position_update_interval {
-            let mut stream_name = match self.category.split(":").collect::<Vec<_>>()[..] {
-                [entity_id] => format!("{}:position", entity_id),
-                [entity_id, types] => format!("{}:{}+position", entity_id, types),
-                _ => self.category.clone(),
-            };
-
-            if let Some(identifier) = self.identifier.as_ref() {
-                stream_name = format!("{}+{}", stream_name, identifier);
-            }
-            
+            let stream_name = self.position_stream_name();
             write.execute(&stream_name).await.unwrap();
 
             self.position_update_counter = 0;
         }
+    }
+
+    pub async fn get_position(&mut self) -> Option<i64> {
+        let message_data = GetLastStreamMessage::new(self.executor.clone())
+            .execute(&self.position_stream_name())
+            .await
+            .ok()??;
+
+        let recorded = Msg::<Recorded>::from_data(message_data).ok()?;
+
+        Some(recorded.position)
     }
 }
 
@@ -151,6 +168,7 @@ impl<Executor: Clone> Subscribtion<Executor> {
     pub fn new(
         executor: Executor,
         category: &str,
+        position: Option<i64>,
         batch_size: i64,
         poll_interval_millis: u64,
         dispatch_channel: Sender<MessageData>,
@@ -163,7 +181,7 @@ impl<Executor: Clone> Subscribtion<Executor> {
         Self {
             get,
             poll_interval,
-            position: None,
+            position,
             dispatch_channel,
         }
     }
