@@ -2,6 +2,35 @@ use crate::{HandlerParam, Message, MessageData, Msg, Version};
 use sqlx::{Acquire, PgExecutor, Postgres};
 use std::error::Error;
 
+pub struct GetStreamVersion<Executor>{
+    executor: Executor,
+}
+
+impl<Executor> GetStreamVersion<Executor> {
+    pub fn new(executor: Executor) -> Self {
+        Self { executor }
+    }
+}
+
+impl<Executor> GetStreamVersion<Executor> 
+where
+    for<'e, 'c> &'e Executor: PgExecutor<'c>,
+{
+    pub async fn execute(&self, stream_name: &str) -> Result<Version, Box<dyn Error>> {
+        #[derive(sqlx::FromRow, serde::Deserialize)]
+        struct StreamVersion {
+            stream_version: i64,
+        }
+
+        let StreamVersion { stream_version } = sqlx::query_as("SELECT * FROM stream_version($1::varchar)")
+            .bind(stream_name)
+            .fetch_one(&self.executor)
+            .await?;
+
+        Ok(Version(stream_version))
+    }
+}
+
 pub struct GetLastStreamMessage<Executor> {
     executor: Executor,
     message_type: Option<String>,
