@@ -79,18 +79,25 @@ impl<Executor: Clone> Consumer<Executor> {
     }
 }
 
-impl Consumer<sqlx::PgPool> {
+impl<Executor> Consumer<Executor>
+where
+    Executor: Clone + Send + Sync + 'static,
+    for<'e, 'c> &'e Executor: sqlx::Acquire<'c, Database = sqlx::Postgres>,
+    for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
+{
     pub async fn start(mut self) {
         let batch_size = self.batch_size;
         let poll_interval_millis = self.poll_interval_millis;
         let category = self.category.clone();
         let executor = self.executor.clone();
         let (dispatch_channel, mut dispatch_receiver) = channel::<MessageData>(batch_size as usize);
+        let position = self.get_position().await;
 
         tokio::task::spawn(async move {
             Subscribtion::new(
                 executor,
                 category.as_ref(),
+                position,
                 batch_size,
                 poll_interval_millis,
                 dispatch_channel,
@@ -171,7 +178,10 @@ impl<Executor: Clone> Subscribtion<Executor> {
     }
 }
 
-impl Subscribtion<sqlx::PgPool> {
+impl<Executor: Clone> Subscribtion<Executor>
+where
+    for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
+{
     pub async fn start(mut self) {
         loop {
             self.poll_interval.tick().await;
