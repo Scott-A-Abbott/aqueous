@@ -11,10 +11,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .connect("postgres://message_store@localhost/message_store")
         .await?;
 
-    const CATEGORY: &'static str = "someAccountCategory:command";
+    let category = Category::new_command("someAccountCategory");
 
-    Consumer::new(pool, CATEGORY)
-        .identifier("someIdentifier")
+    Consumer::new(pool, category)
+        .identifier(CategoryType::new("someIdentifier"))
         .add_handler(handler)
         .position_update_interval(8)
         .start()
@@ -27,6 +27,7 @@ async fn handler(
     deposit: Msg<Deposit>,
     mut writer: WriteMessages<PgPool>,
     AccountStore(mut store): AccountStore,
+    AccountCategory(category): AccountCategory,
 ) {
     let deposited = Deposited {
         account_id: deposit.account_id,
@@ -34,9 +35,10 @@ async fn handler(
         time: OffsetDateTime::now_utc(),
     };
 
-    let stream_name = format!("someAccountCategory-{}", deposit.account_id);
+    let account_stream_id = StreamID::new(deposit.account_id);
+    let stream_name = category.stream_name(account_stream_id);
 
-    let (account, version) = store.fetch(&stream_name).await;
+    let (account, version) = store.fetch(stream_name.clone()).await;
 
     println!(
         "Depositing {} into account {} with balance {}",
@@ -46,7 +48,7 @@ async fn handler(
     writer
         .with_message(deposited)
         .expected_version(version)
-        .execute(&stream_name)
+        .execute(stream_name)
         .await
         .unwrap();
 }
@@ -69,6 +71,15 @@ impl HandlerParam<PgPool> for AccountStore {
         });
 
         Self(store)
+    }
+}
+
+struct AccountCategory(Category);
+
+impl HandlerParam<PgPool> for AccountCategory {
+    fn build(_: MessageData, _: PgPool) -> Self {
+        let category = Category::new("someAccountCategory");
+        AccountCategory(category)
     }
 }
 

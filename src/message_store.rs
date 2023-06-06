@@ -1,4 +1,4 @@
-use crate::{HandlerParam, Message, MessageData, Metadata, Msg, Version};
+use crate::*;
 use sqlx::{types::Json, Acquire, PgExecutor, Postgres};
 use std::error::Error;
 
@@ -16,7 +16,9 @@ impl<Executor> GetStreamVersion<Executor>
 where
     for<'e, 'c> &'e Executor: PgExecutor<'c>,
 {
-    pub async fn execute(&self, stream_name: &str) -> Result<Version, Box<dyn Error>> {
+    pub async fn execute(&self, stream_name: StreamName) -> Result<Version, Box<dyn Error>> {
+        let StreamName(stream_name) = stream_name;
+
         #[derive(sqlx::FromRow, serde::Deserialize)]
         struct StreamVersion {
             stream_version: i64,
@@ -57,8 +59,10 @@ where
 {
     pub async fn execute(
         &mut self,
-        stream_name: &str,
+        stream_name: StreamName,
     ) -> Result<Option<MessageData>, Box<dyn Error>> {
+        let StreamName(stream_name) = stream_name;
+
         sqlx::query_as("SELECT * from get_last_stream_message($1::varchar, $2::varchar);")
             .bind(stream_name)
             .bind(&self.message_type)
@@ -105,7 +109,12 @@ impl<Executor> GetStreamMessages<Executor>
 where
     for<'e, 'c> &'e Executor: PgExecutor<'c>,
 {
-    pub async fn execute(&mut self, stream_name: &str) -> Result<Vec<MessageData>, Box<dyn Error>> {
+    pub async fn execute(
+        &mut self,
+        stream_name: StreamName,
+    ) -> Result<Vec<MessageData>, Box<dyn Error>> {
+        let StreamName(stream_name) = stream_name;
+
         sqlx::query_as(
             "SELECT * from get_stream_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar);",
         )
@@ -121,7 +130,7 @@ where
 
 pub struct GetCategoryMessages<Executor> {
     executor: Executor,
-    category: String,
+    category: Category,
     position: Option<i64>,
     batch_size: Option<i64>,
     correlation: Option<String>,
@@ -131,10 +140,10 @@ pub struct GetCategoryMessages<Executor> {
 }
 
 impl<Executor> GetCategoryMessages<Executor> {
-    pub fn new(executor: Executor, category: &str) -> Self {
+    pub fn new(executor: Executor, category: Category) -> Self {
         Self {
             executor,
-            category: category.to_owned(),
+            category,
             position: None,
             batch_size: None,
             correlation: None,
@@ -180,10 +189,12 @@ where
     for<'e, 'c> &'e Executor: PgExecutor<'c>,
 {
     pub async fn execute(&self) -> Result<Vec<MessageData>, Box<dyn Error>> {
+        let Category(ref category) = self.category;
+
         sqlx::query_as(
             "SELECT * FROM get_category_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar, $5::bigint, $6::bigint, $7::varchar);",
         )
-        .bind(&self.category)
+        .bind(category)
         .bind(self.position.unwrap_or_else(|| 0))
         .bind(self.batch_size.unwrap_or_else(|| 1000))
         .bind(&self.correlation)
@@ -260,15 +271,17 @@ impl<Executor> WriteMessages<Executor>
 where
     for<'e, 'c> &'e Executor: Acquire<'c, Database = Postgres>,
 {
-    pub async fn execute(&mut self, stream_name: &str) -> Result<i64, Box<dyn Error>> {
+    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, Box<dyn Error>> {
         #[derive(sqlx::FromRow)]
         struct LastPosition(i64);
+
         let mut last_position = LastPosition(-1);
+        let StreamName(ref stream_name) = stream_name;
 
         let mut transaction = self.executor.begin().await?;
 
         for message in self.messages.iter() {
-            let id = uuid::Uuid::new_v4().to_string();
+            let id = uuid::Uuid::new_v4();
             let version = self.expected_version.as_ref().map(|Version(value)| value);
 
             last_position = sqlx::query_as(

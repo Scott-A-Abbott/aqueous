@@ -58,17 +58,17 @@ impl<Entity> Store<Entity>
 where
     Entity: Default + Clone + Send + Sync + 'static,
 {
-    pub async fn fetch(&mut self, stream_name: &str) -> (Entity, Version) {
+    pub async fn fetch(&mut self, stream_name: StreamName) -> (Entity, Version) {
         let (mut entity, mut version) = self
             .cache
-            .get_with(stream_name.to_string(), async {
+            .get_with(stream_name.0.clone(), async {
                 (Entity::default(), Version::default())
             })
             .await;
 
         let messages = GetStreamMessages::new(self.executor.clone())
             .position(version.0 + 1)
-            .execute(stream_name)
+            .execute(stream_name.clone())
             .await
             .unwrap();
 
@@ -81,7 +81,7 @@ where
         }
 
         self.cache
-            .insert(stream_name.to_string(), (entity.clone(), version.clone()))
+            .insert(stream_name.0.clone(), (entity.clone(), version.clone()))
             .await;
 
         (entity, version)

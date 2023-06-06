@@ -74,7 +74,7 @@ impl StreamName {
     pub fn split(&self) -> (Category, Option<StreamID>) {
         let Self(stream_name) = self;
         let mut splits = stream_name.split(separator::ID).collect::<VecDeque<_>>();
-        let category = Category(splits.pop_front().expect("Category").to_string());
+        let category = Category::new(splits.pop_front().expect("Category"));
 
         let id = if !splits.is_empty() {
             let id = StreamID(splits.make_contiguous().concat());
@@ -91,11 +91,15 @@ impl StreamName {
 pub struct StreamID(pub String);
 
 impl StreamID {
+    pub fn new(id: impl ToString) -> Self {
+        Self(id.to_string())
+    }
+
     pub fn split(&self) -> Vec<StreamID> {
         let StreamID(id) = self;
 
         id.split(separator::COMPOUND)
-            .map(|id| StreamID(id.to_string()))
+            .map(|id| StreamID::new(id))
             .collect()
     }
 
@@ -114,10 +118,20 @@ impl StreamID {
 pub struct Category(pub String);
 
 impl Category {
+    pub fn new(id: impl ToString) -> Self {
+        Self(id.to_string())
+    }
+
+    pub fn new_command(id: impl ToString) -> Self {
+        let category_type = CategoryType::new("command");
+
+        Self::new(id).add_type(category_type)
+    }
+
     pub fn split(&self) -> (EntityID, Option<CategoryType>) {
         let Self(category) = self;
         let mut splits = category.split(separator::ID).collect::<VecDeque<_>>();
-        let entity_id = EntityID(splits.pop_front().expect("EntityID").to_string());
+        let entity_id = EntityID::new(splits.pop_front().expect("EntityID"));
 
         let category_type = if !splits.is_empty() {
             let category_type = CategoryType(splits.make_contiguous().concat());
@@ -183,16 +197,26 @@ impl Category {
 #[derive(Clone)]
 pub struct EntityID(pub String);
 
+impl EntityID {
+    pub fn new(id: impl ToString) -> Self {
+        Self(id.to_string())
+    }
+}
+
 #[derive(Clone)]
 pub struct CategoryType(pub String);
 
 impl CategoryType {
+    pub fn new(id: impl ToString) -> Self {
+        Self(id.to_string())
+    }
+
     pub fn split(&self) -> Vec<CategoryType> {
         let CategoryType(category_type) = self;
 
         category_type
             .split(separator::COMPOUND)
-            .map(|category_type| CategoryType(category_type.to_string()))
+            .map(|category_type| CategoryType::new(category_type))
             .collect()
     }
 

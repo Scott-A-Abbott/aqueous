@@ -1,7 +1,4 @@
-use crate::{
-    FunctionHandler, GetCategoryMessages, GetLastStreamMessage, Handler, IntoHandler, Message,
-    MessageData, Msg, WriteMessages,
-};
+use crate::*;
 use serde::{Deserialize, Serialize};
 use tokio::{
     sync::mpsc::{channel, Sender},
@@ -10,18 +7,18 @@ use tokio::{
 
 pub struct Consumer<Executor> {
     handlers: Vec<Box<dyn Handler<Executor>>>,
-    identifier: Option<String>,
+    identifier: Option<CategoryType>,
     correlation: Option<String>,
     position_update_interval: u64,
     position_update_counter: u64,
     batch_size: i64,
     poll_interval_millis: u64,
-    category: String,
+    category: Category,
     executor: Executor,
 }
 
 impl<Executor: Clone> Consumer<Executor> {
-    pub fn new(executor: Executor, category: &str) -> Self {
+    pub fn new(executor: Executor, category: Category) -> Self {
         Self {
             handlers: Vec::new(),
             identifier: None,
@@ -30,7 +27,7 @@ impl<Executor: Clone> Consumer<Executor> {
             position_update_counter: 0,
             batch_size: 1000,
             poll_interval_millis: 100,
-            category: category.to_string(),
+            category,
             executor,
         }
     }
@@ -57,8 +54,8 @@ impl<Executor: Clone> Consumer<Executor> {
         self
     }
 
-    pub fn identifier(mut self, identifier: &str) -> Self {
-        self.identifier = Some(identifier.to_owned());
+    pub fn identifier(mut self, identifier: CategoryType) -> Self {
+        self.identifier = Some(identifier);
         self
     }
 
@@ -77,18 +74,17 @@ impl<Executor: Clone> Consumer<Executor> {
         self
     }
 
-    pub fn position_stream_name(&self) -> String {
-        let mut stream_name = match self.category.split(":").collect::<Vec<_>>()[..] {
-            [entity_id] => format!("{}:position", entity_id),
-            [entity_id, types] => format!("{}:{}+position", entity_id, types),
-            _ => self.category.clone(),
-        };
+    pub fn position_stream_name(&self) -> StreamName {
+        let position_type = CategoryType::new("position");
+        let mut category = self.category.add_type(position_type);
 
-        if let Some(identifier) = self.identifier.as_ref() {
-            stream_name = format!("{}+{}", stream_name, identifier);
+        if let Some(identifier) = self.identifier.clone() {
+            category = category.add_type(identifier);
         }
 
-        stream_name
+        let Category(category) = category;
+
+        StreamName(category)
     }
 
     pub async fn dispatch(&mut self, message_data: MessageData) {
@@ -108,7 +104,7 @@ where
     for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
 {
     pub async fn start(mut self) {
-        let mut get = GetCategoryMessages::new(self.executor.clone(), &self.category);
+        let mut get = GetCategoryMessages::new(self.executor.clone(), self.category.clone());
 
         if let Some(correlation) = self.correlation.as_ref() {
             get.correlation(correlation);
@@ -148,15 +144,16 @@ where
 
         if self.position_update_counter >= self.position_update_interval {
             let stream_name = self.position_stream_name();
-            write.execute(&stream_name).await.unwrap();
+            write.execute(stream_name).await.unwrap();
 
             self.position_update_counter = 0;
         }
     }
 
     pub async fn get_position(&mut self) -> Option<i64> {
+        let stream_name = self.position_stream_name();
         let message_data = GetLastStreamMessage::new(self.executor.clone())
-            .execute(&self.position_stream_name())
+            .execute(stream_name)
             .await
             .ok()??;
 

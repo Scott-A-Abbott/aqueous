@@ -1,4 +1,4 @@
-use crate::HandlerParam;
+use crate::{HandlerParam, StreamName};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sqlx::types::Json;
@@ -62,9 +62,11 @@ impl Metadata {
         serde_json::from_value(value.clone()).ok()
     }
 
-    pub fn stream_name(&self) -> Option<String> {
+    pub fn stream_name(&self) -> Option<StreamName> {
         let value = self.0.get(Self::STREAM_NAME_KEY)?;
-        serde_json::from_value(value.clone()).ok()
+        let stream_name = serde_json::from_value(value.clone()).ok()?;
+
+        Some(StreamName(stream_name))
     }
 
     pub fn time(&self) -> Option<PrimitiveDateTime> {
@@ -72,14 +74,18 @@ impl Metadata {
         serde_json::from_value(value.clone()).ok()
     }
 
-    pub fn replay_stream_name(&self) -> Option<String> {
+    pub fn replay_stream_name(&self) -> Option<StreamName> {
         let value = self.0.get(Self::REPLAY_STREAM_NAME_KEY)?;
-        serde_json::from_value(value.clone()).ok()
+        let stream_name = serde_json::from_value(value.clone()).ok()?;
+
+        Some(StreamName(stream_name))
     }
 
-    pub fn causation_message_stream_name(&self) -> Option<String> {
+    pub fn causation_message_stream_name(&self) -> Option<StreamName> {
         let value = self.0.get(Self::CAUSATION_MESSAGE_STREAM_NAME_KEY)?.clone();
-        serde_json::from_value(value).ok()
+        let stream_name = serde_json::from_value(value.clone()).ok()?;
+
+        Some(StreamName(stream_name))
     }
 
     pub fn causation_message_position(&self) -> Option<i64> {
@@ -95,14 +101,16 @@ impl Metadata {
         serde_json::from_value(value).ok()
     }
 
-    pub fn correlation_stream_name(&self) -> Option<String> {
+    pub fn correlation_stream_name(&self) -> Option<StreamName> {
         let value = self.0.get(Self::CORRELATION_STREAM_NAME_KEY)?.clone();
-        serde_json::from_value(value).ok()
+        let stream_name = serde_json::from_value(value.clone()).ok()?;
+
+        Some(StreamName(stream_name))
     }
 
-    pub fn set_causation_message_stream_name(mut self, stream_name: &str) -> Self {
+    pub fn set_causation_message_stream_name(mut self, stream_name: StreamName) -> Self {
         let key = String::from(Self::CAUSATION_MESSAGE_STREAM_NAME_KEY);
-        self.0.insert(key, stream_name.into());
+        self.0.insert(key, stream_name.0.into());
         self
     }
 
@@ -118,9 +126,9 @@ impl Metadata {
         self
     }
 
-    pub fn set_correlation_stream_name(mut self, stream_name: &str) -> Self {
+    pub fn set_correlation_stream_name(mut self, stream_name: StreamName) -> Self {
         let key = String::from(Self::CORRELATION_STREAM_NAME_KEY);
-        self.0.insert(key, stream_name.into());
+        self.0.insert(key, stream_name.0.into());
         self
     }
 
@@ -136,15 +144,15 @@ impl Metadata {
         self
     }
 
-    pub fn set_stream_name(mut self, stream_name: &str) -> Self {
+    pub fn set_stream_name(mut self, stream_name: StreamName) -> Self {
         let key = String::from(Self::STREAM_NAME_KEY);
-        self.0.insert(key, stream_name.into());
+        self.0.insert(key, stream_name.0.into());
         self
     }
 
-    pub fn set_replay_stream_name(mut self, stream_name: &str) -> Self {
+    pub fn set_replay_stream_name(mut self, stream_name: StreamName) -> Self {
         let key = String::from(Self::REPLAY_STREAM_NAME_KEY);
-        self.0.insert(key, stream_name.into());
+        self.0.insert(key, stream_name.0.into());
         self
     }
 
@@ -178,7 +186,7 @@ where
                 .set_position(message_data.position)
                 .set_global_position(message_data.global_position)
                 .set_time(message_data.time)
-                .set_stream_name(&message_data.stream_name);
+                .set_stream_name(StreamName(message_data.stream_name.clone()));
 
             Ok(Msg {
                 data,

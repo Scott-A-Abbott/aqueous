@@ -32,11 +32,14 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .map(|_| deposit.clone())
         .collect::<Vec<_>>();
 
-    let stream_name = format!("someAccountCategory:command-{}", deposit.account_id);
+    let category = Category::new_command("someAccountCategory");
+
+    let stream_id = StreamID::new(deposit.account_id);
+    let stream_name = category.stream_name(stream_id);
 
     WriteMessages::new(pool.clone())
         .with_batch(&batch)
-        .execute(&stream_name)
+        .execute(stream_name)
         .await?;
 
     println!("Wrote 10 Deposit commands");
