@@ -10,6 +10,14 @@ pub mod separator {
 pub struct StreamName(pub String);
 
 impl StreamName {
+    pub fn new(category: Category, id: StreamID) -> Self {
+        let Category(category) = category;
+        let StreamID(id) = id;
+        let stream_name = format!("{}{}{}", category, separator::ID, id);
+
+        StreamName(stream_name)
+    }
+
     pub fn has_id(&self) -> bool {
         let Self(stream_name) = self;
         stream_name.contains(separator::ID)
@@ -168,11 +176,7 @@ impl Category {
     }
 
     pub fn stream_name(&self, id: StreamID) -> StreamName {
-        let Self(category) = self;
-        let StreamID(id) = id;
-        let stream_name = format!("{}{}{}", category, separator::ID, id);
-
-        StreamName(stream_name)
+        StreamName::new(self.clone(), id)
     }
 }
 
