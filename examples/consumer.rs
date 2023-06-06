@@ -1,8 +1,8 @@
 use aqueous::*;
-use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::error::Error;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[tokio::main]
@@ -14,7 +14,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     const CATEGORY: &'static str = "someAccountCategory:command";
 
     Consumer::new(pool, CATEGORY)
+        .identifier("someIdentifier")
         .add_handler(handler)
+        .position_update_interval(8)
         .start()
         .await;
 
@@ -29,14 +31,17 @@ async fn handler(
     let deposited = Deposited {
         account_id: deposit.account_id,
         amount: deposit.amount,
-        time: Utc::now(),
+        time: OffsetDateTime::now_utc(),
     };
 
     let stream_name = format!("someAccountCategory-{}", deposit.account_id);
 
     let (account, version) = store.fetch(&stream_name).await;
 
-    println!("Depositing {} into account {} with balance {}", deposited.amount, account.id, account.balance);
+    println!(
+        "Depositing {} into account {} with balance {}",
+        deposited.amount, account.id, account.balance
+    );
 
     writer
         .with_message(deposited)
@@ -71,7 +76,7 @@ impl HandlerParam<PgPool> for AccountStore {
 struct Deposit {
     account_id: Uuid,
     amount: i64,
-    time: DateTime<Utc>,
+    time: OffsetDateTime,
 }
 impl Message for Deposit {
     const TYPE_NAME: &'static str = "Deposit";
@@ -81,7 +86,7 @@ impl Message for Deposit {
 struct Deposited {
     account_id: Uuid,
     amount: i64,
-    time: DateTime<Utc>,
+    time: OffsetDateTime,
 }
 impl Message for Deposited {
     const TYPE_NAME: &'static str = "Deposited";

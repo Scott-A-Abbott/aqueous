@@ -1,8 +1,8 @@
 use crate::HandlerParam;
-use chrono::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{error::Error, ops::Deref};
+use time::PrimitiveDateTime;
 
 #[derive(sqlx::FromRow, Debug, Clone)]
 pub struct MessageData {
@@ -14,7 +14,7 @@ pub struct MessageData {
     pub global_position: i64,
     pub metadata: String,
     pub data: String,
-    pub time: NaiveDateTime,
+    pub time: PrimitiveDateTime,
 }
 
 // Should have a derive macro that can generate the message_type needed for MessageData
@@ -66,12 +66,9 @@ impl Metadata {
         serde_json::from_value(value.clone()).ok()
     }
 
-    pub fn time(&self) -> Option<NaiveDateTime> {
+    pub fn time(&self) -> Option<PrimitiveDateTime> {
         let value = self.0.get(Self::TIME_KEY)?;
-        let time_string: String = serde_json::from_value(value.clone()).ok()?;
-
-        use std::str::FromStr;
-        NaiveDateTime::from_str(&time_string).ok()
+        serde_json::from_value(value.clone()).ok()?
     }
 
     pub fn replay_stream_name(&self) -> Option<String> {
@@ -150,7 +147,7 @@ impl Metadata {
         self
     }
 
-    pub fn set_time(mut self, time: NaiveDateTime) -> Self {
+    pub fn set_time(mut self, time: PrimitiveDateTime) -> Self {
         let key = String::from(Self::TIME_KEY);
         self.0.insert(key, time.to_string().into());
         self

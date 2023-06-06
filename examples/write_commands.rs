@@ -1,14 +1,14 @@
 use aqueous::*;
-use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Deposit {
     account_id: Uuid,
     amount: i64,
-    time: DateTime<Utc>,
+    time: OffsetDateTime,
 }
 impl Message for Deposit {
     const TYPE_NAME: &'static str = "Deposit";
@@ -24,7 +24,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let deposit = Deposit {
         account_id,
         amount: 10,
-        time: Utc::now(),
+        time: OffsetDateTime::now_utc(),
     };
 
     let batch = (0..10)
