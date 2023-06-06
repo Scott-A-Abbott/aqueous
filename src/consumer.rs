@@ -11,6 +11,7 @@ use tokio::{
 pub struct Consumer<Executor> {
     handlers: Vec<Box<dyn Handler<Executor>>>,
     identifier: Option<String>,
+    correlation: Option<String>,
     position_update_interval: u64,
     position_update_counter: u64,
     batch_size: i64,
@@ -24,6 +25,7 @@ impl<Executor: Clone> Consumer<Executor> {
         Self {
             handlers: Vec::new(),
             identifier: None,
+            correlation: None,
             position_update_interval: 100,
             position_update_counter: 0,
             batch_size: 1000,
@@ -57,6 +59,11 @@ impl<Executor: Clone> Consumer<Executor> {
 
     pub fn identifier(mut self, identifier: &str) -> Self {
         self.identifier = Some(identifier.to_owned());
+        self
+    }
+
+    pub fn correlation(mut self, correlation: &str) -> Self {
+        self.correlation = Some(correlation.to_owned());
         self
     }
 
@@ -101,24 +108,26 @@ where
     for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
 {
     pub async fn start(mut self) {
-        let batch_size = self.batch_size;
+        let mut get = GetCategoryMessages::new(self.executor.clone(), &self.category);
+
+        if let Some(correlation) = self.correlation.as_ref() {
+            get.correlation(correlation);
+        }
+
+        if let Some(position) = self.get_position().await {
+            get.position(position);
+        }
+
+        get.batch_size(self.batch_size);
+
         let poll_interval_millis = self.poll_interval_millis;
-        let category = self.category.clone();
-        let executor = self.executor.clone();
-        let (dispatch_channel, mut dispatch_receiver) = channel::<MessageData>(batch_size as usize);
-        let position = self.get_position().await;
+        let (dispatch_channel, mut dispatch_receiver) =
+            channel::<MessageData>(self.batch_size as usize);
 
         tokio::task::spawn(async move {
-            Subscribtion::new(
-                executor,
-                category.as_ref(),
-                position,
-                batch_size,
-                poll_interval_millis,
-                dispatch_channel,
-            )
-            .start()
-            .await
+            Subscribtion::new(get, poll_interval_millis, dispatch_channel)
+                .start()
+                .await
         });
 
         loop {
@@ -166,22 +175,16 @@ pub struct Subscribtion<Executor> {
 
 impl<Executor: Clone> Subscribtion<Executor> {
     pub fn new(
-        executor: Executor,
-        category: &str,
-        position: Option<i64>,
-        batch_size: i64,
+        get: GetCategoryMessages<Executor>,
         poll_interval_millis: u64,
         dispatch_channel: Sender<MessageData>,
     ) -> Self {
         let poll_interval = Self::interval_from_millis(poll_interval_millis);
 
-        let mut get = GetCategoryMessages::new(executor.clone(), category);
-        get.batch_size(batch_size);
-
         Self {
             get,
             poll_interval,
-            position,
+            position: None,
             dispatch_channel,
         }
     }
