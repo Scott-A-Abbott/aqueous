@@ -8,7 +8,7 @@ use std::{
 
 static ENTITY_CACHE: OnceLock<Cache<TypeId, Arc<Box<dyn Any + Send + Sync>>>> = OnceLock::new();
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Version(pub i64);
 impl Version {
     pub fn initial() -> Self {
@@ -65,6 +65,15 @@ where
                 (Entity::default(), Version::default())
             })
             .await;
+
+        let current_version = GetStreamVersion::new(self.executor.clone())
+            .execute(stream_name.clone())
+            .await
+            .unwrap();
+
+        if version == current_version {
+            return (entity, version);
+        }
 
         let messages = GetStreamMessages::new(self.executor.clone())
             .position(version.0 + 1)

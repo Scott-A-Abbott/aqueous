@@ -4,7 +4,7 @@
 - [x] Improve ergonomics around categories and streams
   - [x] Dogfood category/stream ergonomics
 - [x] Add a GetStreamVersion to the message_store module
-  - [ ] When done, incorporate it into the entity store fetch
+  - [x] When done, incorporate it into the entity store fetch
 - [ ] Implement HandlerParam for all message_store objects
 - [ ] A settings object that is passed around for building
   - [ ] Strip HandlerParam from the Msg type and alter the build method to only take an executor + settings
