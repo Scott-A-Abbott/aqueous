@@ -34,6 +34,12 @@ where
     }
 }
 
+impl<Executor> HandlerParam<Executor> for GetStreamVersion<Executor> {
+    fn build(_: MessageData, executor: Executor) -> Self {
+        Self::new(executor)
+    }
+}
+
 pub struct GetLastStreamMessage<Executor> {
     executor: Executor,
     message_type: Option<String>,
@@ -69,6 +75,12 @@ where
             .fetch_optional(&self.executor)
             .await
             .map_err(|e| e.into())
+    }
+}
+
+impl<Executor> HandlerParam<Executor> for GetLastStreamMessage<Executor> {
+    fn build(_: MessageData, executor: Executor) -> Self {
+        Self::new(executor)
     }
 }
 
@@ -125,6 +137,12 @@ where
         .fetch_all(&self.executor)
         .await
         .map_err(|e| e.into())
+    }
+}
+
+impl<Executor> HandlerParam<Executor> for GetStreamMessages<Executor> {
+    fn build(_: MessageData, executor: Executor) -> Self {
+        Self::new(executor)
     }
 }
 
@@ -202,6 +220,12 @@ where
         .fetch_all(&self.executor)
         .await
         .map_err(|e| e.into())
+    }
+}
+
+impl<Executor> HandlerParam<Executor> for GetCategoryMessages<Executor> {
+    fn build(_: MessageData, executor: Executor) -> Self {
+        Self::new(executor)
     }
 }
 
