@@ -59,11 +59,11 @@ struct AccountEntity {
     pub balance: i64,
 }
 
-struct AccountStore(Store<AccountEntity, PgPool>);
+struct AccountStore(EntityStore<AccountEntity, PgPool>);
 
 impl HandlerParam<PgPool> for AccountStore {
     fn build(message_data: MessageData, executor: PgPool) -> Self {
-        let mut store = Store::build(message_data, executor.clone());
+        let mut store = EntityStore::build(message_data, executor.clone());
 
         store.with_projection(|account: &mut AccountEntity, message: Msg<Deposited>| {
             account.id = message.account_id;

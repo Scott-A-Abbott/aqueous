@@ -21,13 +21,13 @@ impl Default for Version {
     }
 }
 
-pub struct Store<Entity, Executor = sqlx::PgPool> {
+pub struct EntityStore<Entity, Executor = sqlx::PgPool> {
     projections: Vec<Box<dyn Projection<Entity>>>,
     cache: Cache<String, (Entity, Version)>,
     executor: Executor,
 }
 
-impl<Entity, Executor> Store<Entity, Executor>
+impl<Entity, Executor> EntityStore<Entity, Executor>
 where
     Entity: Clone + Send + Sync + 'static,
 {
@@ -54,7 +54,7 @@ where
     }
 }
 
-impl<Entity> Store<Entity>
+impl<Entity> EntityStore<Entity>
 where
     Entity: Default + Clone + Send + Sync + 'static,
 {
@@ -88,7 +88,7 @@ where
     }
 }
 
-impl<Entity, Executor> HandlerParam<Executor> for Store<Entity, Executor>
+impl<Entity, Executor> HandlerParam<Executor> for EntityStore<Entity, Executor>
 where
     Entity: Clone + Send + Sync + 'static,
     Executor: Clone + 'static,
@@ -113,7 +113,7 @@ where
                     .downcast_ref::<Cache<String, (Entity, Version)>>()
                     .unwrap();
 
-                let store = Store::new(executor.clone(), cache.clone());
+                let store = Self::new(executor.clone(), cache.clone());
                 store
             })
         })
