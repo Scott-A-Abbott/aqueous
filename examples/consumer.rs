@@ -16,7 +16,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     Consumer::new(pool, category)
         .identifier(CategoryType::new("someIdentifier"))
         .add_handler(handler)
-        .position_update_interval(8)
         .start()
         .await;
 
@@ -29,12 +28,6 @@ async fn handler(
     AccountStore(mut store): AccountStore,
     AccountCategory(category): AccountCategory,
 ) {
-    let deposited = Deposited {
-        account_id: deposit.account_id,
-        amount: deposit.amount,
-        time: OffsetDateTime::now_utc(),
-    };
-
     let account_stream_id = StreamID::new(deposit.account_id);
     let stream_name = category.stream_name(account_stream_id);
 
@@ -42,8 +35,10 @@ async fn handler(
 
     println!(
         "Depositing {} into account {} with balance {}",
-        deposited.amount, account.id, account.balance
+        deposit.amount, account.id, account.balance
     );
+
+    let deposited = Msg::<Deposited>::follow(deposit);
 
     writer
         .with_message(deposited)
@@ -89,6 +84,7 @@ struct Deposit {
     amount: i64,
     time: OffsetDateTime,
 }
+
 impl Message for Deposit {
     const TYPE_NAME: &'static str = "Deposit";
 }
@@ -99,6 +95,21 @@ struct Deposited {
     amount: i64,
     time: OffsetDateTime,
 }
+
 impl Message for Deposited {
     const TYPE_NAME: &'static str = "Deposited";
+}
+
+impl From<Deposit> for Deposited {
+    fn from(deposit: Deposit) -> Self {
+        let account_id = deposit.account_id;
+        let amount = deposit.amount;
+        let time = OffsetDateTime::now_utc();
+
+        Self {
+            account_id,
+            amount,
+            time,
+        }
+    }
 }

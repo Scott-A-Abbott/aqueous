@@ -173,9 +173,12 @@ pub struct Msg<T> {
 
 impl<T> Msg<T>
 where
-    for<'de> T: Message + Deserialize<'de>,
+    T: Message,
 {
-    pub fn from_data(message_data: MessageData) -> Result<Self, Box<dyn Error>> {
+    pub fn from_data(message_data: MessageData) -> Result<Self, Box<dyn Error>>
+    where
+        for<'de> T: Deserialize<'de>,
+    {
         if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;
             let maybe_metadata: Option<Metadata> =
@@ -195,6 +198,23 @@ where
         } else {
             Err(format!("Message Data is not an instance of {}", T::TYPE_NAME).into())
         }
+    }
+
+    pub fn follow<M>(message: Msg<M>) -> Self
+    where
+        T: From<M>,
+    {
+        let data = T::from(message.data);
+        let metadata = message.metadata.clone().map(|Metadata(mut map)| {
+            map.remove(Metadata::POSITION_KEY);
+            map.remove(Metadata::GLOBAL_POSITION_KEY);
+            map.remove(Metadata::TIME_KEY);
+            map.remove(Metadata::STREAM_NAME_KEY);
+
+            Metadata(map)
+        });
+
+        Self { data, metadata }
     }
 }
 
