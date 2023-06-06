@@ -125,7 +125,7 @@ where
             channel::<MessageData>(self.batch_size as usize);
 
         tokio::task::spawn(async move {
-            Subscribtion::new(get, poll_interval_millis, dispatch_channel)
+            Subscription::new(get, poll_interval_millis, dispatch_channel)
                 .start()
                 .await
         });
@@ -166,14 +166,14 @@ where
     }
 }
 
-pub struct Subscribtion<Executor> {
+pub struct Subscription<Executor> {
     get: GetCategoryMessages<Executor>,
     poll_interval: Interval,
     position: Option<i64>,
     dispatch_channel: Sender<MessageData>,
 }
 
-impl<Executor> Subscribtion<Executor> {
+impl<Executor> Subscription<Executor> {
     pub fn new(
         get: GetCategoryMessages<Executor>,
         poll_interval_millis: u64,
@@ -199,7 +199,7 @@ impl<Executor> Subscribtion<Executor> {
     }
 }
 
-impl<Executor> Subscribtion<Executor>
+impl<Executor> Subscription<Executor>
 where
     for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
 {
