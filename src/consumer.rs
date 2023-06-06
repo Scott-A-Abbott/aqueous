@@ -173,7 +173,7 @@ pub struct Subscribtion<Executor> {
     dispatch_channel: Sender<MessageData>,
 }
 
-impl<Executor: Clone> Subscribtion<Executor> {
+impl<Executor> Subscribtion<Executor> {
     pub fn new(
         get: GetCategoryMessages<Executor>,
         poll_interval_millis: u64,
@@ -199,7 +199,7 @@ impl<Executor: Clone> Subscribtion<Executor> {
     }
 }
 
-impl<Executor: Clone> Subscribtion<Executor>
+impl<Executor> Subscribtion<Executor>
 where
     for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
 {
