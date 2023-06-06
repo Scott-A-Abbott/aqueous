@@ -1,6 +1,7 @@
 use crate::HandlerParam;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
+use sqlx::types::Json;
 use std::{error::Error, ops::Deref};
 use time::PrimitiveDateTime;
 
@@ -12,7 +13,7 @@ pub struct MessageData {
     pub type_name: String,
     pub position: i64,
     pub global_position: i64,
-    pub metadata: String,
+    pub metadata: Option<Json<Metadata>>,
     pub data: String,
     pub time: PrimitiveDateTime,
 }
@@ -68,7 +69,7 @@ impl Metadata {
 
     pub fn time(&self) -> Option<PrimitiveDateTime> {
         let value = self.0.get(Self::TIME_KEY)?;
-        serde_json::from_value(value.clone()).ok()?
+        serde_json::from_value(value.clone()).ok()
     }
 
     pub fn replay_stream_name(&self) -> Option<String> {
@@ -149,7 +150,9 @@ impl Metadata {
 
     pub fn set_time(mut self, time: PrimitiveDateTime) -> Self {
         let key = String::from(Self::TIME_KEY);
-        self.0.insert(key, time.to_string().into());
+        let value = serde_json::to_value(time).unwrap();
+        self.0.insert(key, value);
+
         self
     }
 }
@@ -167,7 +170,8 @@ where
     pub fn from_data(message_data: MessageData) -> Result<Self, Box<dyn Error>> {
         if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;
-            let maybe_metadata: Option<Metadata> = serde_json::from_str(&message_data.metadata)?;
+            let maybe_metadata: Option<Metadata> =
+                message_data.metadata.map(|Json(metadata)| metadata);
 
             let metadata = maybe_metadata
                 .unwrap_or_default()

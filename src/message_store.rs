@@ -1,5 +1,5 @@
-use crate::{HandlerParam, Message, MessageData, Msg, Version};
-use sqlx::{Acquire, PgExecutor, Postgres};
+use crate::{HandlerParam, Message, MessageData, Metadata, Msg, Version};
+use sqlx::{types::Json, Acquire, PgExecutor, Postgres};
 use std::error::Error;
 
 pub struct GetStreamVersion<Executor> {
@@ -202,12 +202,12 @@ pub struct WriteMessages<Executor> {
     messages: Vec<WriteMessageData>,
 }
 
-#[derive(serde::Serialize, Debug)]
+#[derive(serde::Serialize)]
 struct WriteMessageData {
     #[serde(rename = "type")]
     type_name: String,
     data: String,
-    metadata: Option<String>,
+    metadata: Option<Json<Metadata>>,
 }
 
 impl<Executor> WriteMessages<Executor> {
@@ -237,7 +237,7 @@ impl<Executor> WriteMessages<Executor> {
         let message_data = WriteMessageData {
             type_name: T::TYPE_NAME.to_owned(),
             data: serde_json::to_string(&msg.data).unwrap(),
-            metadata: serde_json::to_string(&msg.metadata).ok(),
+            metadata: msg.metadata.map(|metadata| Json(metadata)),
         };
 
         self.messages.push(message_data);
