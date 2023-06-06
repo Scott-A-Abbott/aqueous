@@ -130,7 +130,6 @@ where
 
 pub struct GetCategoryMessages<Executor> {
     executor: Executor,
-    category: Category,
     position: Option<i64>,
     batch_size: Option<i64>,
     correlation: Option<String>,
@@ -140,10 +139,9 @@ pub struct GetCategoryMessages<Executor> {
 }
 
 impl<Executor> GetCategoryMessages<Executor> {
-    pub fn new(executor: Executor, category: Category) -> Self {
+    pub fn new(executor: Executor) -> Self {
         Self {
             executor,
-            category,
             position: None,
             batch_size: None,
             correlation: None,
@@ -188,8 +186,8 @@ impl<Executor> GetCategoryMessages<Executor>
 where
     for<'e, 'c> &'e Executor: PgExecutor<'c>,
 {
-    pub async fn execute(&self) -> Result<Vec<MessageData>, Box<dyn Error>> {
-        let Category(ref category) = self.category;
+    pub async fn execute(&self, category: Category) -> Result<Vec<MessageData>, Box<dyn Error>> {
+        let Category(category) = category;
 
         sqlx::query_as(
             "SELECT * FROM get_category_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar, $5::bigint, $6::bigint, $7::varchar);",

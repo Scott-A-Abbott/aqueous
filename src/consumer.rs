@@ -104,7 +104,7 @@ where
     for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
 {
     pub async fn start(mut self) {
-        let mut get = GetCategoryMessages::new(self.executor.clone(), self.category.clone());
+        let mut get = GetCategoryMessages::new(self.executor.clone());
 
         if let Some(correlation) = self.correlation.as_ref() {
             get.correlation(correlation);
@@ -116,13 +116,14 @@ where
 
         get.batch_size(self.batch_size);
 
+        let category = self.category.clone();
         let poll_interval_millis = self.poll_interval_millis;
         let (dispatch_channel, mut dispatch_receiver) =
             channel::<MessageData>(self.batch_size as usize);
 
         tokio::task::spawn(async move {
             Subscription::new(get, poll_interval_millis, dispatch_channel)
-                .start()
+                .start(category)
                 .await
         });
 
@@ -200,7 +201,7 @@ impl<Executor> Subscription<Executor>
 where
     for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
 {
-    pub async fn start(mut self) {
+    pub async fn start(mut self, category: Category) {
         loop {
             self.poll_interval.tick().await;
 
@@ -208,7 +209,7 @@ where
                 self.get.position(position);
             }
 
-            let messages = self.get.execute().await.unwrap();
+            let messages = self.get.execute(category.clone()).await.unwrap();
 
             for message in messages.into_iter() {
                 let message_pos = message.global_position;
