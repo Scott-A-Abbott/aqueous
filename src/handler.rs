@@ -1,12 +1,12 @@
 use crate::{Message, MessageData, Msg};
 use std::{marker::PhantomData, ops::Deref};
 
-pub trait Handler<Executor> {
-    fn call(&mut self, message_data: MessageData, executor: Executor);
+pub trait Handler<Executor, Settings> {
+    fn call(&mut self, message_data: MessageData, executor: Executor, settings: Settings);
 }
 
-pub trait HandlerParam<Executor>: Sized {
-    fn build(message_data: MessageData, executor: Executor) -> Self;
+pub trait HandlerParam<Executor, Settings>: Sized {
+    fn build(executor: Executor, settings: Settings) -> Self;
 }
 
 pub struct FunctionHandler<ExecutorMarker, ParamsMarker, ReturnMarker, F> {
@@ -83,18 +83,19 @@ macro_rules! function_params_with_first {
 macro_rules! impl_handler {
    ($first:ident, [$($ty:ident $(,)?)*], $re:ident)=> {
         #[allow(non_snake_case, unused_mut)]
-        impl<$first, $($ty,)* $re, F, E> Handler<E> for FunctionHandler<E, (Msg<$first>, $($ty,)*), $re, F>
+        impl<$first, $($ty,)* $re, F, E, S> Handler<E, S> for FunctionHandler<E, (Msg<$first>, $($ty,)*), $re, F>
         where
             for<'de> $first: Message + serde::Deserialize<'de>,
-            $($ty: HandlerParam<E>,)*
+            $($ty: HandlerParam<E, S>,)*
             F: FnMut(Msg<$first>, $($ty,)*) -> $re,
             $re: std::future::Future<Output = ()>,
             E: Clone + 'static,
+            S: Clone,
         {
-            fn call(&mut self, message_data: MessageData, executor: E) {
+            fn call(&mut self, message_data: MessageData, _executor: E, _settings: S) {
                 if message_data.type_name == $first::TYPE_NAME.to_string() {
-                    let msg: Msg<$first> = Msg::build(message_data.clone(), executor.clone());
-                    $(let $ty = $ty::build(message_data.clone(), executor.clone());)*
+                    let msg: Msg<$first> = Msg::from_data(message_data.clone()).unwrap();
+                    $(let $ty = $ty::build(_executor.clone(), _settings.clone());)*
                     tokio::task::block_in_place(move || {
                         tokio::runtime::Handle::current().block_on(async move {
                             (self.func)(msg, $($ty,)*).await;

@@ -83,8 +83,8 @@ where
     }
 }
 
-impl<Executor> HandlerParam<Executor> for GetLastStreamMessage<Executor> {
-    fn build(_: MessageData, executor: Executor) -> Self {
+impl<Executor, Settings> HandlerParam<Executor, Settings> for GetLastStreamMessage<Executor> {
+    fn build(executor: Executor, _: Settings) -> Self {
         Self::new(executor)
     }
 }
@@ -145,8 +145,8 @@ where
     }
 }
 
-impl<Executor> HandlerParam<Executor> for GetStreamMessages<Executor> {
-    fn build(_: MessageData, executor: Executor) -> Self {
+impl<Executor, Settings> HandlerParam<Executor, Settings> for GetStreamMessages<Executor> {
+    fn build(executor: Executor, _: Settings) -> Self {
         Self::new(executor)
     }
 }
@@ -228,8 +228,8 @@ where
     }
 }
 
-impl<Executor> HandlerParam<Executor> for GetCategoryMessages<Executor> {
-    fn build(_: MessageData, executor: Executor) -> Self {
+impl<Executor, Settings> HandlerParam<Executor, Settings> for GetCategoryMessages<Executor> {
+    fn build(executor: Executor, _: Settings) -> Self {
         Self::new(executor)
     }
 }
@@ -342,10 +342,8 @@ where
     }
 }
 
-impl<Executor: Clone + 'static> HandlerParam<Executor> for WriteMessages<Executor> {
-    fn build(_: MessageData, executor: Executor) -> Self {
-        let writer = Self::new(executor.clone());
-
-        writer
+impl<Executor, Settings> HandlerParam<Executor, Settings> for WriteMessages<Executor> {
+    fn build(executor: Executor, _: Settings) -> Self {
+        Self::new(executor)
     }
 }

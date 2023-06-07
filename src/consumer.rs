@@ -5,20 +5,24 @@ use tokio::{
     time::{interval, Duration, Interval, MissedTickBehavior},
 };
 
-pub struct Consumer<Executor> {
-    handlers: Vec<Box<dyn Handler<Executor>>>,
+pub struct Consumer<Executor, Settings> {
+    handlers: Vec<Box<dyn Handler<Executor, Settings>>>,
     identifier: Option<CategoryType>,
     correlation: Option<String>,
     position_update_interval: u64,
     position_update_counter: u64,
     batch_size: i64,
     poll_interval_millis: u64,
+    settings: Settings,
     category: Category,
     executor: Executor,
 }
 
-impl<Executor: Clone> Consumer<Executor> {
-    pub fn new(executor: Executor, category: Category) -> Self {
+impl<Executor, Settings> Consumer<Executor, Settings> {
+    pub fn new(executor: Executor, category: Category) -> Self
+    where
+        Settings: Default,
+    {
         Self {
             handlers: Vec::new(),
             identifier: None,
@@ -27,6 +31,7 @@ impl<Executor: Clone> Consumer<Executor> {
             position_update_counter: 0,
             batch_size: 1000,
             poll_interval_millis: 100,
+            settings: Default::default(),
             category,
             executor,
         }
@@ -39,11 +44,11 @@ impl<Executor: Clone> Consumer<Executor> {
         Return: 'static,
         Func: IntoHandler<Executor, Params, Return, Func> + 'static,
         H: IntoHandler<Executor, Params, Return, Func> + 'static,
-        FunctionHandler<Executor, Params, Return, Func>: Handler<Executor>,
+        FunctionHandler<Executor, Params, Return, Func>: Handler<Executor, Settings>,
     {
         let handler: FunctionHandler<Executor, Params, Return, Func> = handler.into_handler();
 
-        let boxed_handler: Box<dyn Handler<Executor>> = Box::new(handler);
+        let boxed_handler: Box<dyn Handler<Executor, Settings>> = Box::new(handler);
         self.handlers.push(boxed_handler);
 
         self
@@ -56,6 +61,11 @@ impl<Executor: Clone> Consumer<Executor> {
 
     pub fn identifier(mut self, identifier: CategoryType) -> Self {
         self.identifier = Some(identifier);
+        self
+    }
+
+    pub fn settings(mut self, settings: Settings) -> Self {
+        self.settings = settings;
         self
     }
 
@@ -87,19 +97,25 @@ impl<Executor: Clone> Consumer<Executor> {
         StreamName(category)
     }
 
-    pub async fn dispatch(&mut self, message_data: MessageData) {
+    pub async fn dispatch(&mut self, message_data: MessageData)
+    where
+        Settings: Clone,
+        Executor: Clone,
+    {
         for handler in self.handlers.iter_mut() {
             let message_data = message_data.clone();
             let executor = self.executor.clone();
+            let settings = self.settings.clone();
 
-            handler.call(message_data, executor);
+            handler.call(message_data, executor, settings);
         }
     }
 }
 
-impl<Executor> Consumer<Executor>
+impl<Executor, Settings> Consumer<Executor, Settings>
 where
     Executor: Clone + Send + Sync + 'static,
+    Settings: Clone,
     for<'e, 'c> &'e Executor: sqlx::Acquire<'c, Database = sqlx::Postgres>,
     for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
 {

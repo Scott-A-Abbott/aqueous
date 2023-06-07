@@ -97,12 +97,12 @@ where
     }
 }
 
-impl<Entity, Executor> HandlerParam<Executor> for EntityStore<Entity, Executor>
+impl<Entity, Executor, Settings> HandlerParam<Executor, Settings> for EntityStore<Entity, Executor>
 where
     Entity: Clone + Send + Sync + 'static,
     Executor: Clone + 'static,
 {
-    fn build(_: MessageData, executor: Executor) -> Self {
+    fn build(executor: Executor, _: Settings) -> Self {
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
                 let entity_cache = ENTITY_CACHE.get_or_init(|| Cache::new(5));

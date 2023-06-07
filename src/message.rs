@@ -1,7 +1,6 @@
-use crate::{HandlerParam, StreamName};
+use crate::StreamName;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
-use sqlx::types::Json;
 use std::{error::Error, ops::Deref};
 use time::PrimitiveDateTime;
 
@@ -249,14 +248,5 @@ impl<T: Clone> Clone for Msg<T> {
             data: self.data.clone(),
             metadata: self.metadata.clone(),
         }
-    }
-}
-
-impl<T, E> HandlerParam<E> for Msg<T>
-where
-    for<'de> T: Message + serde::Deserialize<'de>,
-{
-    fn build(message_data: MessageData, _: E) -> Self {
-        Msg::from_data(message_data).unwrap()
     }
 }

@@ -56,9 +56,9 @@ struct AccountEntity {
 
 struct AccountStore(EntityStore<AccountEntity, PgPool>);
 
-impl HandlerParam<PgPool> for AccountStore {
-    fn build(message_data: MessageData, executor: PgPool) -> Self {
-        let mut store = EntityStore::build(message_data, executor.clone());
+impl HandlerParam<PgPool, ()> for AccountStore {
+    fn build(executor: PgPool, settings: ()) -> Self {
+        let mut store = EntityStore::build(executor.clone(), settings);
 
         store.with_projection(|account: &mut AccountEntity, message: Msg<Deposited>| {
             account.id = message.account_id;
@@ -71,8 +71,8 @@ impl HandlerParam<PgPool> for AccountStore {
 
 struct AccountCategory(Category);
 
-impl HandlerParam<PgPool> for AccountCategory {
-    fn build(_: MessageData, _: PgPool) -> Self {
+impl HandlerParam<PgPool, ()> for AccountCategory {
+    fn build(_: PgPool, _: ()) -> Self {
         let category = Category::new("someAccountCategory");
         AccountCategory(category)
     }
