@@ -7,7 +7,7 @@ use account::Account;
 use aqueous::{HandlerParam, Category};
 use sqlx::PgPool;
 
-pub struct AccountCategory(Category);
+pub struct AccountCategory(pub Category);
 
 impl AccountCategory {
     pub fn new() -> Self {
@@ -22,7 +22,7 @@ impl HandlerParam<PgPool, ()> for AccountCategory {
     }
 }
 
-pub struct AccountCommandCategory(Category);
+pub struct AccountCommandCategory(pub Category);
 
 impl AccountCommandCategory {
     pub fn new() -> Self {
