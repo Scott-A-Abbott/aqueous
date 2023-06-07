@@ -4,7 +4,7 @@ mod store;
 
 use account::Account;
 
-use aqueous::{HandlerParam, Category};
+use aqueous::{Category, HandlerParam};
 use sqlx::PgPool;
 
 pub struct AccountCategory(pub Category);

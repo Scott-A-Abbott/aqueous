@@ -1,5 +1,5 @@
-use uuid::Uuid;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct Account {

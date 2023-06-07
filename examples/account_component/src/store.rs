@@ -1,5 +1,5 @@
-use crate::{Account, messages::events::*};
-use aqueous::{EntityStore, Msg, HandlerParam};
+use crate::{messages::events::*, Account};
+use aqueous::{EntityStore, HandlerParam, Msg};
 
 pub struct Store<Executor>(pub EntityStore<Account, Executor>);
 
@@ -54,4 +54,3 @@ fn apply_closed(account: &mut Account, closed: Msg<Closed>) {
     account.id = closed.account_id;
     account.closed_time = Some(closed.time);
 }
-
