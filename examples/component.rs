@@ -95,6 +95,7 @@ impl Message for Deposit {
 struct Deposited {
     account_id: Uuid,
     amount: i64,
+    #[serde(with = "time::serde::iso8601")]
     time: OffsetDateTime,
 }
 
