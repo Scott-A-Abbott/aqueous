@@ -43,9 +43,9 @@ async fn handler(
     );
 
     writer
-        .with_message(deposited.clone())
+        .with_message(deposited)
         .expected_version(version)
-        .execute(stream_name.clone())
+        .execute(stream_name)
         .await
         .unwrap();
 }
