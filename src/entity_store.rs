@@ -22,7 +22,7 @@ impl Default for Version {
 }
 
 pub struct EntityStore<Entity, Executor = sqlx::PgPool> {
-    projections: Vec<Box<dyn Projection<Entity>>>,
+    projections: Vec<Box<dyn Projection<Entity> + Send>>,
     cache: Cache<String, (Entity, Version)>,
     executor: Executor,
 }
@@ -41,12 +41,12 @@ where
 
     pub fn with_projection<F, M>(&mut self, func: F) -> &mut Self
     where
-        for<'de> M: Message + serde::Deserialize<'de> + 'static,
-        F: FnMut(&mut Entity, Msg<M>) + 'static,
+        for<'de> M: Message + Send + serde::Deserialize<'de> + 'static,
+        F: Send + FnMut(&mut Entity, Msg<M>) + 'static,
         Entity: 'static,
     {
         let projection = IntoProjection::into_projection(func);
-        let boxed_projection: Box<dyn Projection<Entity>> = Box::new(projection);
+        let boxed_projection: Box<dyn Projection<Entity> + Send> = Box::new(projection);
 
         self.projections.push(boxed_projection);
 

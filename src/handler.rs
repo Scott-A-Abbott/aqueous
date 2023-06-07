@@ -82,7 +82,7 @@ macro_rules! function_params_with_first {
 
 macro_rules! impl_handler {
    ($first:ident, [$($ty:ident $(,)?)*], $re:ident)=> {
-        #[allow(non_snake_case, unused_mut)]
+        #[allow(non_snake_case)]
         impl<$first, $($ty,)* $re, F, E, S> Handler<E, S> for FunctionHandler<E, (Msg<$first>, $($ty,)*), $re, F>
         where
             for<'de> $first: Message + serde::Deserialize<'de>,

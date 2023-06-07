@@ -13,9 +13,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     let category = Category::new_command("someAccountCategory");
 
-    Consumer::new(pool, category)
-        .identifier(CategoryType::new("someIdentifier"))
-        .add_handler(handler)
+    Component::default()
+        .add_consumer(
+            Consumer::new(pool.clone(), category.clone())
+                .identifier(CategoryType::new("someIdentifier"))
+                .add_handler(handler),
+        )
         .start()
         .await;
 
@@ -30,22 +33,20 @@ async fn handler(
 ) {
     let account_stream_id = StreamID::new(deposit.account_id);
     let stream_name = category.stream_name(account_stream_id);
+    let deposited = Msg::<Deposited>::follow(deposit);
 
     let (account, version) = store.fetch(stream_name.clone()).await;
 
     println!(
         "Depositing {} into account {} with balance {}",
-        deposit.amount, account.id, account.balance
+        deposited.amount, account.id, account.balance
     );
 
-    let deposited = Msg::<Deposited>::follow(deposit);
-
-    writer
-        .with_message(deposited)
+    let _ = writer
+        .with_message(deposited.clone())
         .expected_version(version)
-        .execute(stream_name)
-        .await
-        .unwrap();
+        .execute(stream_name.clone())
+        .await;
 }
 
 #[derive(Debug, Clone, Default)]

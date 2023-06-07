@@ -6,7 +6,7 @@ use tokio::{
 };
 
 pub struct Consumer<Executor, Settings> {
-    handlers: Vec<Box<dyn Handler<Executor, Settings>>>,
+    handlers: Vec<Box<dyn Handler<Executor, Settings> + Send>>,
     identifier: Option<CategoryType>,
     correlation: Option<String>,
     position_update_interval: u64,
@@ -39,16 +39,16 @@ impl<Executor, Settings> Consumer<Executor, Settings> {
 
     pub fn add_handler<Params, Return, Func, H>(mut self, handler: H) -> Self
     where
-        Executor: Clone + 'static,
-        Params: 'static,
-        Return: 'static,
-        Func: IntoHandler<Executor, Params, Return, Func> + 'static,
+        Executor: Clone + Send + 'static,
+        Params: Send + 'static,
+        Return: Send + 'static,
+        Func: IntoHandler<Executor, Params, Return, Func> + Send + 'static,
         H: IntoHandler<Executor, Params, Return, Func> + 'static,
         FunctionHandler<Executor, Params, Return, Func>: Handler<Executor, Settings>,
     {
         let handler: FunctionHandler<Executor, Params, Return, Func> = handler.into_handler();
 
-        let boxed_handler: Box<dyn Handler<Executor, Settings>> = Box::new(handler);
+        let boxed_handler: Box<dyn Handler<Executor, Settings> + Send> = Box::new(handler);
         self.handlers.push(boxed_handler);
 
         self
@@ -97,7 +97,7 @@ impl<Executor, Settings> Consumer<Executor, Settings> {
         StreamName(category)
     }
 
-    pub async fn dispatch(&mut self, message_data: MessageData)
+    pub fn dispatch(&mut self, message_data: MessageData)
     where
         Settings: Clone,
         Executor: Clone,
@@ -147,7 +147,7 @@ where
             if let Some(message_data) = dispatch_receiver.recv().await {
                 let update_position = message_data.global_position;
 
-                self.dispatch(message_data).await;
+                self.dispatch(message_data);
                 self.update_position(update_position).await;
             }
         }
@@ -177,6 +177,35 @@ where
         let recorded = Msg::<Recorded>::from_data(message_data).ok()?;
 
         Some(recorded.position)
+    }
+}
+
+impl<E, S> Start for Consumer<E, S>
+where
+    E: Clone + Send + Sync + 'static,
+    S: Clone,
+    for<'e, 'c> &'e E: sqlx::Acquire<'c, Database = sqlx::Postgres>,
+    for<'e, 'c> &'e E: sqlx::PgExecutor<'c>,
+{
+    fn start(&mut self) {
+        tokio::task::block_in_place(move || {
+            tokio::runtime::Handle::current().block_on(async move {
+                let handlers = self.handlers.drain(..).collect::<Vec<_>>();
+                let consumer = Consumer {
+                    handlers,
+                    identifier: self.identifier.clone(),
+                    correlation: self.correlation.clone(),
+                    position_update_interval: self.position_update_interval.clone(),
+                    position_update_counter: self.position_update_counter.clone(),
+                    batch_size: self.batch_size.clone(),
+                    poll_interval_millis: self.poll_interval_millis.clone(),
+                    settings: self.settings.clone(),
+                    category: self.category.clone(),
+                    executor: self.executor.clone(),
+                };
+                Consumer::start(consumer).await;
+            })
+        });
     }
 }
 
