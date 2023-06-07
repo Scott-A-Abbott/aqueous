@@ -1,18 +1,8 @@
 use aqueous::*;
-use serde::{Deserialize, Serialize};
 use std::error::Error;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct Deposit {
-    account_id: Uuid,
-    amount: i64,
-    time: OffsetDateTime,
-}
-impl Message for Deposit {
-    const TYPE_NAME: &'static str = "Deposit";
-}
+use account_component::Deposit;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {

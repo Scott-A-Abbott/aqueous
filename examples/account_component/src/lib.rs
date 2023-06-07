@@ -1,31 +1,10 @@
 use aqueous::*;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::error::Error;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[tokio::main]
-pub async fn main() -> Result<(), Box<dyn Error>> {
-    let pool = sqlx::postgres::PgPoolOptions::new()
-        .connect("postgres://message_store@localhost/message_store")
-        .await?;
-
-    let category = Category::new_command("someAccountCategory");
-
-    Component::default()
-        .add_consumer(
-            Consumer::new(pool.clone(), category.clone())
-                .identifier(CategoryType::new("someIdentifier"))
-                .add_handler(handler),
-        )
-        .start()
-        .await;
-
-    Ok(())
-}
-
-async fn handler(
+pub async fn handler(
     deposit: Msg<Deposit>,
     mut writer: WriteMessages<PgPool>,
     AccountStore(mut store): AccountStore,
@@ -51,12 +30,12 @@ async fn handler(
 }
 
 #[derive(Debug, Clone, Default)]
-struct AccountEntity {
+pub struct AccountEntity {
     pub id: Uuid,
     pub balance: i64,
 }
 
-struct AccountStore(EntityStore<AccountEntity, PgPool>);
+pub struct AccountStore(EntityStore<AccountEntity, PgPool>);
 
 impl HandlerParam<PgPool, ()> for AccountStore {
     fn build(executor: PgPool, settings: ()) -> Self {
@@ -71,7 +50,7 @@ impl HandlerParam<PgPool, ()> for AccountStore {
     }
 }
 
-struct AccountCategory(Category);
+pub struct AccountCategory(Category);
 
 impl HandlerParam<PgPool, ()> for AccountCategory {
     fn build(_: PgPool, _: ()) -> Self {
@@ -81,10 +60,10 @@ impl HandlerParam<PgPool, ()> for AccountCategory {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct Deposit {
-    account_id: Uuid,
-    amount: i64,
-    time: OffsetDateTime,
+pub struct Deposit {
+    pub account_id: Uuid,
+    pub amount: i64,
+    pub time: OffsetDateTime,
 }
 
 impl Message for Deposit {
@@ -92,11 +71,11 @@ impl Message for Deposit {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct Deposited {
-    account_id: Uuid,
-    amount: i64,
+pub struct Deposited {
+    pub account_id: Uuid,
+    pub amount: i64,
     #[serde(with = "time::serde::iso8601")]
-    time: OffsetDateTime,
+    pub time: OffsetDateTime,
 }
 
 impl Message for Deposited {
