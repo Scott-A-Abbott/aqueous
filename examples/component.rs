@@ -42,11 +42,12 @@ async fn handler(
         deposited.amount, account.id, account.balance
     );
 
-    let _ = writer
+    writer
         .with_message(deposited.clone())
         .expected_version(version)
         .execute(stream_name.clone())
-        .await;
+        .await
+        .unwrap();
 }
 
 #[derive(Debug, Clone, Default)]
