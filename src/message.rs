@@ -13,7 +13,7 @@ pub struct MessageData {
     pub type_name: String,
     pub position: i64,
     pub global_position: i64,
-    pub metadata: Option<Json<Metadata>>,
+    pub metadata: Option<String>,
     pub data: String,
     pub time: PrimitiveDateTime,
 }
@@ -181,8 +181,9 @@ where
     {
         if &message_data.type_name == T::TYPE_NAME {
             let data = serde_json::from_str(&message_data.data)?;
-            let maybe_metadata: Option<Metadata> =
-                message_data.metadata.map(|Json(metadata)| metadata);
+            let maybe_metadata: Option<Metadata> = message_data
+                .metadata
+                .map(|metadata| serde_json::from_str(&metadata).unwrap());
 
             let metadata = maybe_metadata
                 .unwrap_or_default()
@@ -205,24 +206,27 @@ where
         T: From<M>,
     {
         let data = T::from(message.data);
-        let metadata = message.metadata.clone().map(|Metadata(mut map)| {
+        let metadata = message.metadata.and_then(|Metadata(mut map)| {
             map.remove(Metadata::POSITION_KEY);
             map.remove(Metadata::GLOBAL_POSITION_KEY);
             map.remove(Metadata::TIME_KEY);
             map.remove(Metadata::STREAM_NAME_KEY);
 
-            Metadata(map)
+            if map.is_empty() {
+                return None;
+            }
+
+            Some(Metadata(map))
         });
 
         Self { data, metadata }
     }
 }
 
-impl<T: Message> Message for Msg<T> {
-    const TYPE_NAME: &'static str = T::TYPE_NAME;
-}
-
-impl<T> From<T> for Msg<T> {
+impl<T> From<T> for Msg<T>
+where
+    T: Message,
+{
     fn from(data: T) -> Self {
         Msg {
             data,

@@ -21,7 +21,7 @@ where
 
         #[derive(sqlx::FromRow, serde::Deserialize)]
         struct StreamVersion {
-            stream_version: i64,
+            stream_version: Option<i64>,
         }
 
         let StreamVersion { stream_version } =
@@ -30,12 +30,17 @@ where
                 .fetch_one(&self.executor)
                 .await?;
 
-        Ok(Version(stream_version))
+        let version = match stream_version {
+            Some(version) => Version(version),
+            None => Version::default(),
+        };
+
+        Ok(version)
     }
 }
 
-impl<Executor> HandlerParam<Executor> for GetStreamVersion<Executor> {
-    fn build(_: MessageData, executor: Executor) -> Self {
+impl<Executor, Settings> HandlerParam<Executor, Settings> for GetStreamVersion<Executor> {
+    fn build(executor: Executor, _: Settings) -> Self {
         Self::new(executor)
     }
 }
@@ -262,11 +267,12 @@ impl<Executor> WriteMessages<Executor> {
         self
     }
 
-    pub fn with_message<T>(&mut self, message: T) -> &mut Self
+    pub fn with_message<T>(&mut self, message: impl Into<Msg<T>>) -> &mut Self
     where
-        T: serde::Serialize + Message + Into<Msg<T>>,
+        T: serde::Serialize + Message,
     {
         let msg: Msg<T> = message.into();
+
         let message_data = WriteMessageData {
             type_name: T::TYPE_NAME.to_owned(),
             data: serde_json::to_string(&msg.data).unwrap(),
