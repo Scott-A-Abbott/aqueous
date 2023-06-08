@@ -1,6 +1,6 @@
 use account_component::*;
-use aqueous::{CategoryType, Component, Consumer, IntoHandler};
-use sqlx::{postgres::PgPoolOptions, PgPool};
+use aqueous::{CategoryType, Component, Consumer};
+use sqlx::postgres::PgPoolOptions;
 use std::error::Error;
 
 #[tokio::main]
@@ -13,10 +13,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     Component::default()
         .add_consumer(
-            Consumer::<PgPool, ()>::new(pool.clone(), category.clone())
+            Consumer::new(pool, category)
                 .identifier(CategoryType::new("someIdentifier"))
-                .add_handler(handlers::commands::handle_open)
-                .add_handler(handlers::commands::handle_deposit),
+                .add_handlers((
+                    handlers::commands::handle_open,
+                    handlers::commands::handle_deposit
+                )),
         )
         .start()
         .await;

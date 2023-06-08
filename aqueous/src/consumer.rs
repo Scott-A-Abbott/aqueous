@@ -54,11 +54,11 @@ impl<Executor, Settings> Consumer<Executor, Settings> {
         self
     }
 
-    pub fn add_handlers(
+    pub fn add_handlers<Params, Return>(
         mut self,
-        handlers: impl IntoHandlerCollection<Executor, Settings>,
+        handlers: impl IntoHandlerCollection<Params, Return, Executor, Settings>,
     ) -> Self {
-        let HandlerCollection { mut handlers } = handlers.into_handler_collection();
+        let HandlerCollection { mut handlers, .. } = handlers.into_handler_collection();
         self.handlers.append(&mut handlers);
 
         self
