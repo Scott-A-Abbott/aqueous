@@ -58,3 +58,29 @@ pub async fn handle_withdraw(
 
     let _ = writer.with_message(withdraw).initial().execute(stream_name);
 }
+
+pub async fn handle_close(
+    close: Msg<Close>,
+    Store(mut store): Store<PgPool>,
+    mut writer: WriteMessages<PgPool>,
+    AccountCategory(category): AccountCategory,
+) {
+    let account_stream_id = StreamID::new(close.account_id);
+    let stream_name = category.stream_name(account_stream_id);
+
+    let (account, version) = store.fetch(stream_name.clone()).await;
+
+    if account.was_closed() {
+        // ## Add logging
+        return;
+    }
+
+    let closed: Msg<Closed> = Msg::follow(close);
+
+    writer
+        .with_message(closed)
+        .expected_version(version)
+        .execute(stream_name)
+        .await
+        .unwrap();
+}

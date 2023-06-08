@@ -19,6 +19,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                     handlers::commands::handle_open,
                     handlers::commands::handle_deposit,
                     handlers::commands::handle_withdraw,
+                    handlers::commands::handle_close,
                 )),
         )
         .start()

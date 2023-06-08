@@ -16,7 +16,7 @@ impl Account {
         self.opened_time.is_some()
     }
 
-    pub fn is_closed(&self) -> bool {
+    pub fn was_closed(&self) -> bool {
         self.closed_time.is_some()
     }
 
