@@ -14,11 +14,11 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let mut args: VecDeque<String> = env::args().collect();
 
     let account_id = args.pop_front()
-        .and_then(|arg| Uuid::from_str(arg.as_str()).ok())
+        .and_then(|arg| Uuid::from_str(&arg).ok())
         .unwrap_or_else(|| Uuid::new_v4());
 
     let amount = args.pop_front()
-        .and_then(|arg| i64::from_str(arg.as_str()).ok())
+        .and_then(|arg| i64::from_str(&arg).ok())
         .unwrap_or(10);
 
     let deposit = Deposit {
@@ -33,7 +33,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let stream_id = StreamID::new(deposit.account_id);
     let stream_name = category.stream_name(stream_id);
 
-    println!("Writing Deposit {:#?}", deposit);
+    println!("Writing {:#?}", deposit);
 
     WriteMessages::new(pool.clone())
         .with_message(deposit)
