@@ -54,6 +54,16 @@ impl<Executor, Settings> Consumer<Executor, Settings> {
         self
     }
 
+    pub fn add_handlers(
+        mut self,
+        handlers: impl IntoHandlerCollection<Executor, Settings>,
+    ) -> Self {
+        let HandlerCollection { mut handlers } = handlers.into_handler_collection();
+        self.handlers.append(&mut handlers);
+
+        self
+    }
+
     pub fn batch_size(mut self, batch_size: i64) -> Self {
         self.batch_size = batch_size;
         self

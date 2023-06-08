@@ -21,7 +21,7 @@ pub trait IntoHandler<ExecutorMarker, ParamsMarker, ReturnMarker, Func>: Sized {
 }
 
 pub struct HandlerCollection<Executor, Settings> {
-    handlers: Vec<Box<dyn Handler<Executor, Settings>>>,
+    pub handlers: Vec<Box<dyn Handler<Executor, Settings> + Send>>,
 }
 
 pub trait IntoHandlerCollection<Executor, Settings>: Sized {
@@ -31,9 +31,9 @@ pub trait IntoHandlerCollection<Executor, Settings>: Sized {
 macro_rules! impl_into_handler_collection {
     ($($ty:ident $(,)?)*) => {
         #[allow(non_snake_case)]
-        impl<Executor, Settings, $($ty,)*> IntoHandlerCollection<Executor, Settings> for ($($ty,)*) 
+        impl<Executor, Settings, $($ty,)*> IntoHandlerCollection<Executor, Settings> for ($($ty,)*)
         where
-            $($ty: Handler<Executor, Settings> + 'static,)*
+            $($ty: Handler<Executor, Settings> + Send + 'static,)*
         {
             fn into_handler_collection(self) -> HandlerCollection<Executor, Settings> {
                 let ($($ty,)*) = self;
@@ -41,7 +41,7 @@ macro_rules! impl_into_handler_collection {
                 let mut handlers = Vec::new();
 
                 $(
-                    let $ty: Box<dyn Handler<Executor, Settings>> =  Box::new($ty);
+                    let $ty: Box<dyn Handler<Executor, Settings> + Send> =  Box::new($ty);
                     handlers.push($ty);
                 )*
 
