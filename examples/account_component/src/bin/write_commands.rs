@@ -1,8 +1,8 @@
-use account_component::Deposit;
 use aqueous::*;
 use std::error::Error;
 use time::OffsetDateTime;
 use uuid::Uuid;
+use account_component::messages::commands::Deposit;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
@@ -10,11 +10,13 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .connect("postgres://message_store@localhost/message_store")
         .await?;
 
-    let account_id = Uuid::new_v4();
+    let amount = 10;
+
     let deposit = Deposit {
-        account_id,
-        amount: 10,
+        deposit_id: Uuid::new_v4(),
+        account_id: Uuid::new_v4(),
         time: OffsetDateTime::now_utc(),
+        amount,
     };
 
     let batch = (0..10)
@@ -32,7 +34,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .execute(stream_name)
         .await?;
 
-    println!("Wrote 10 Deposit commands");
+    println!("Wrote 10 Deposit commands with amount {}", amount);
 
     Ok(())
 }
