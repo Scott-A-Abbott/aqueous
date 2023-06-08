@@ -14,7 +14,7 @@ pub struct AccountCategory(pub Category);
 
 impl AccountCategory {
     pub fn new() -> Self {
-        let category = Category::new("someAccountCategory");
+        let category = Category::new("account");
         Self(category)
     }
 }
@@ -29,12 +29,27 @@ pub struct AccountCommandCategory(pub Category);
 
 impl AccountCommandCategory {
     pub fn new() -> Self {
-        let category = Category::new_command("someAccountCategory");
+        let category = Category::new_command("account");
         Self(category)
     }
 }
 
 impl HandlerParam<PgPool, ()> for AccountCommandCategory {
+    fn build(_: PgPool, _: ()) -> Self {
+        Self::new()
+    }
+}
+
+pub struct TransactionCategory(pub Category);
+
+impl TransactionCategory {
+    pub fn new() -> Self {
+        let category = Category::new("accountTransaction");
+        Self(category)
+    }
+}
+
+impl HandlerParam<PgPool, ()> for TransactionCategory {
     fn build(_: PgPool, _: ()) -> Self {
         Self::new()
     }
