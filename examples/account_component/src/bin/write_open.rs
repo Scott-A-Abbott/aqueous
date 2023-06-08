@@ -1,19 +1,19 @@
 use account_component::{messages::commands::Open, AccountCommandCategory};
 use aqueous::*;
-use std::{error::Error, env, collections::VecDeque, str::FromStr};
+use std::{collections::VecDeque, env, error::Error, str::FromStr};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-
     let pool = sqlx::postgres::PgPoolOptions::new()
         .connect("postgres://message_store@localhost/message_store")
         .await?;
 
     let mut args: VecDeque<String> = env::args().collect();
 
-    let account_id = args.pop_front()
+    let account_id = args
+        .pop_front()
         .and_then(|arg| Uuid::from_str(&arg).ok())
         .unwrap_or_else(|| Uuid::new_v4());
 
