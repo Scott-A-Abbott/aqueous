@@ -45,3 +45,16 @@ pub async fn handle_deposit(
 
     let _ = writer.with_message(deposit).initial().execute(stream_name);
 }
+
+pub async fn handle_withdraw(
+    withdraw: Msg<Withdraw>,
+    mut writer: WriteMessages<PgPool>,
+    TransactionCategory(category): TransactionCategory,
+) {
+    let stream_id = StreamID::new(withdraw.withdrawal_id);
+    let stream_name = category.stream_name(stream_id);
+
+    let withdraw: Msg<Withdraw> = Msg::follow(withdraw);
+
+    let _ = writer.with_message(withdraw).initial().execute(stream_name);
+}
