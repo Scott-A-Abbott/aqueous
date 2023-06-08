@@ -11,6 +11,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .await?;
 
     let mut args: VecDeque<String> = env::args().collect();
+    args.pop_front();
 
     let account_id = args
         .pop_front()
