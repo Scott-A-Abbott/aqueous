@@ -14,3 +14,19 @@ serde = "1"
 serde_json = "1"
 uuid = { version = "1.3", features = ["serde", "v4"] }
 time = { version = "0.3", features = ["serde", "parsing"] }
+
+[[bin]]
+name = "write_open"
+path = "src/bin/interactive/write_open.rs"
+
+[[bin]]
+name = "write_deposit"
+path = "src/bin/interactive/write_deposit.rs"
+
+[[bin]]
+name = "write_withdraw"
+path = "src/bin/interactive/write_withdraw.rs"
+
+[[bin]]
+name = "write_close"
+path = "src/bin/interactive/write_close.rs"
