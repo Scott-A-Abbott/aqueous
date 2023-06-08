@@ -17,7 +17,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 .identifier(CategoryType::new("someIdentifier"))
                 .add_handlers((
                     handlers::commands::handle_open,
-                    handlers::commands::handle_deposit
+                    handlers::commands::handle_deposit,
                 )),
         )
         .start()

@@ -30,7 +30,8 @@ pub trait IntoHandlerCollection<Params, Return, Executor, Settings>: Sized {
     fn into_handler_collection(self) -> HandlerCollection<Params, Return, Executor, Settings>;
 }
 
-impl<F, Params, Return, Executor, Settings> IntoHandlerCollection<Params, Return, Executor, Settings> for F
+impl<F, Params, Return, Executor, Settings>
+    IntoHandlerCollection<Params, Return, Executor, Settings> for F
 where
     Params: Send + 'static,
     Executor: Send + 'static,
