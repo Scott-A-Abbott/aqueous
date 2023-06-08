@@ -1,3 +1,4 @@
+use crate::messages::commands::Withdraw;
 use aqueous::Message;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -17,4 +18,17 @@ pub struct WithdrawalRejected {
 
 impl Message for WithdrawalRejected {
     const TYPE_NAME: &'static str = "WithdrawalRejected";
+}
+
+impl From<Withdraw> for WithdrawalRejected {
+    fn from(withdraw: Withdraw) -> Self {
+        Self {
+            withdrawal_id: withdraw.withdrawal_id,
+            account_id: withdraw.account_id,
+            amount: withdraw.amount,
+            time: withdraw.time,
+            processed_time: OffsetDateTime::now_utc(),
+            sequence: 0,
+        }
+    }
 }
