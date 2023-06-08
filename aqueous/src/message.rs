@@ -1,7 +1,7 @@
 use crate::StreamName;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::{error::Error, ops::Deref};
+use std::{error::Error, ops::{Deref, DerefMut}};
 use time::PrimitiveDateTime;
 
 #[derive(sqlx::FromRow, Debug, Clone)]
@@ -239,6 +239,12 @@ impl<T> Deref for Msg<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.data
+    }
+}
+
+impl<T> DerefMut for Msg<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
     }
 }
 
