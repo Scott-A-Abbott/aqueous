@@ -1,8 +1,8 @@
+use account_component::messages::commands::Deposit;
 use aqueous::*;
 use std::error::Error;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use account_component::messages::commands::Deposit;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {

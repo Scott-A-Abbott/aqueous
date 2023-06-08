@@ -1,8 +1,8 @@
+use crate::messages::commands::Close;
 use aqueous::Message;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::messages::commands::Close;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Closed {

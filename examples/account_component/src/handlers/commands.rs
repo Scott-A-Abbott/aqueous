@@ -1,4 +1,4 @@
-mod transactions;
+pub mod transactions;
 
 use crate::{
     messages::{commands::*, events::*},
