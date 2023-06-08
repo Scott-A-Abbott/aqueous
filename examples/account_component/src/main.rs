@@ -1,19 +1,21 @@
-use aqueous::{ Component, Consumer, Category, CategoryType };
+use account_component::*;
+use aqueous::{CategoryType, Component, Consumer};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::error::Error;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let pool = sqlx::postgres::PgPoolOptions::new()
+    let pool = PgPoolOptions::new()
         .connect("postgres://message_store@localhost/message_store")
         .await?;
 
-    let category = Category::new_command("someAccountCategory");
+    let AccountCommandCategory(category) = crate::AccountCommandCategory::new();
 
     Component::default()
         .add_consumer(
-            Consumer::new(pool.clone(), category.clone())
+            Consumer::<PgPool, ()>::new(pool.clone(), category.clone())
                 .identifier(CategoryType::new("someIdentifier"))
-                .add_handler(account_component::handler),
+                .add_handler(handlers::commands::handle_open)
         )
         .start()
         .await;

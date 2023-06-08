@@ -1,8 +1,11 @@
-mod account;
-mod messages;
-mod store;
+pub mod account;
+pub mod consumers;
+pub mod handlers;
+pub mod messages;
+pub mod store;
 
-use account::Account;
+pub use account::Account;
+pub use store::Store;
 
 use aqueous::{Category, HandlerParam};
 use sqlx::PgPool;

@@ -12,7 +12,7 @@ pub struct Account {
 }
 
 impl Account {
-    pub fn was_open(&self) -> bool {
+    pub fn was_opened(&self) -> bool {
         self.opened_time.is_some()
     }
 
