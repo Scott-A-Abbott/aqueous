@@ -20,6 +20,61 @@ pub trait IntoHandler<ExecutorMarker, ParamsMarker, ReturnMarker, Func>: Sized {
     fn into_handler(self) -> FunctionHandler<ExecutorMarker, ParamsMarker, ReturnMarker, Func>;
 }
 
+pub struct HandlerCollection<Executor, Settings> {
+    handlers: Vec<Box<dyn Handler<Executor, Settings>>>,
+}
+
+pub trait IntoHandlerCollection<Executor, Settings>: Sized {
+    fn into_handler_collection(self) -> HandlerCollection<Executor, Settings>;
+}
+
+macro_rules! impl_into_handler_collection {
+    ($($ty:ident $(,)?)*) => {
+        #[allow(non_snake_case)]
+        impl<Executor, Settings, $($ty,)*> IntoHandlerCollection<Executor, Settings> for ($($ty,)*) 
+        where
+            $($ty: Handler<Executor, Settings> + 'static,)*
+        {
+            fn into_handler_collection(self) -> HandlerCollection<Executor, Settings> {
+                let ($($ty,)*) = self;
+
+                let mut handlers = Vec::new();
+
+                $(
+                    let $ty: Box<dyn Handler<Executor, Settings>> =  Box::new($ty);
+                    handlers.push($ty);
+                )*
+
+                HandlerCollection { handlers }
+            }
+        }
+    }
+}
+
+#[rustfmt::skip]
+macro_rules! all_tuples {
+    ($macro_name:ident) => {
+        $macro_name!(T1);
+        $macro_name!(T1, T2);
+        $macro_name!(T1, T2, T3);
+        $macro_name!(T1, T2, T3, T4);
+        $macro_name!(T1, T2, T3, T4, T5);
+        $macro_name!(T1, T2, T3, T4, T5, T6);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
+        $macro_name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+    };
+}
+
+all_tuples!(impl_into_handler_collection);
+
 #[rustfmt::skip]
 macro_rules! function_params {
     ($macro_name:ident) => {
