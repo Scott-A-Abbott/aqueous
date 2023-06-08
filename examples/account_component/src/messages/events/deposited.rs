@@ -1,3 +1,4 @@
+use crate::messages::commands::Deposit;
 use aqueous::Message;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -17,4 +18,17 @@ pub struct Deposited {
 
 impl Message for Deposited {
     const TYPE_NAME: &'static str = "Deposited";
+}
+
+impl From<Deposit> for Deposited {
+    fn from(deposit: Deposit) -> Self {
+        Self {
+            deposit_id: deposit.deposit_id,
+            account_id: deposit.account_id,
+            amount: deposit.amount,
+            time: deposit.time,
+            processed_time: OffsetDateTime::now_utc(),
+            sequence: 0,
+        }
+    }
 }
