@@ -41,7 +41,7 @@ pub async fn handle_deposit(
     let stream_id = StreamID::new(deposit.deposit_id);
     let stream_name = category.stream_name(stream_id);
 
-    let withdraw: Msg<Deposit> = Msg::follow(deposit);
+    let deposit: Msg<Deposit> = Msg::follow(deposit);
 
-    let _ = writer.with_message(withdraw).initial().execute(stream_name);
+    let _ = writer.with_message(deposit).initial().execute(stream_name);
 }
