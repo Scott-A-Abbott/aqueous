@@ -43,7 +43,7 @@ pub async fn handle_deposit(
 
     let deposit: Msg<Deposit> = Msg::follow(deposit);
 
-    let _ = writer.with_message(deposit).initial().execute(stream_name);
+    let _ = writer.with_message(deposit).initial().execute(stream_name).await;
 }
 
 pub async fn handle_withdraw(
@@ -56,7 +56,7 @@ pub async fn handle_withdraw(
 
     let withdraw: Msg<Withdraw> = Msg::follow(withdraw);
 
-    let _ = writer.with_message(withdraw).initial().execute(stream_name);
+    let _ = writer.with_message(withdraw).initial().execute(stream_name).await;
 }
 
 pub async fn handle_close(
