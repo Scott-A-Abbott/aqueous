@@ -24,7 +24,7 @@ impl From<Open> for Opened {
         Self {
             account_id: open.account_id,
             customer_id: open.customer_id,
-            time: OffsetDateTime::now_utc(),
+            time: open.time,
             processed_time: OffsetDateTime::now_utc(),
         }
     }
