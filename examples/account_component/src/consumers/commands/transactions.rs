@@ -8,6 +8,6 @@ impl TransactionsConsumer {
     pub fn build(pool: PgPool) -> Consumer<PgPool, ()> {
         let TransactionCategory(category) = crate::TransactionCategory::new();
 
-        Consumer::new(pool, category)
+        Consumer::new(pool, category).add_handler(handle_deposit)
     }
 }
