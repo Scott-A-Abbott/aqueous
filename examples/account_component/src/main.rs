@@ -1,5 +1,5 @@
 use account_component::*;
-use aqueous::{CategoryType, Component, Consumer};
+use aqueous::{CategoryType, Component, Consumer, IntoHandler};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::error::Error;
 
@@ -16,6 +16,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             Consumer::<PgPool, ()>::new(pool.clone(), category.clone())
                 .identifier(CategoryType::new("someIdentifier"))
                 .add_handler(handlers::commands::handle_open)
+                .add_handler(handlers::commands::handle_deposit),
         )
         .start()
         .await;

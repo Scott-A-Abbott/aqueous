@@ -1,8 +1,8 @@
 mod transactions;
 
 use crate::{
-    messages::{events::*, commands::*},
-    Store, AccountCategory,
+    messages::{commands::*, events::*},
+    AccountCategory, Store, TransactionCategory,
 };
 use aqueous::{Msg, StreamID, WriteMessages};
 use sqlx::PgPool;
@@ -31,4 +31,17 @@ pub async fn handle_open(
         .execute(stream_name)
         .await
         .unwrap();
+}
+
+pub async fn handle_deposit(
+    deposit: Msg<Deposit>,
+    mut writer: WriteMessages<PgPool>,
+    TransactionCategory(category): TransactionCategory,
+) {
+    let stream_id = StreamID::new(deposit.deposit_id);
+    let stream_name = category.stream_name(stream_id);
+
+    let withdraw: Msg<Deposit> = Msg::follow(deposit);
+
+    let _ = writer.with_message(withdraw).initial().execute(stream_name);
 }
