@@ -42,7 +42,7 @@ where
     pub fn with_projection<F, M>(&mut self, func: F) -> &mut Self
     where
         for<'de> M: Message + Send + serde::Deserialize<'de> + 'static,
-        F: Send + FnMut(&mut Entity, Msg<M>) + 'static,
+        F: Fn(&mut Entity, Msg<M>) + Send + 'static,
         Entity: 'static,
     {
         let projection = IntoProjection::into_projection(func);
@@ -141,7 +141,7 @@ pub struct FunctionProjection<Marker, F> {
 impl<'e, Entity, M, F> Projection<Entity> for FunctionProjection<(&'e mut Entity, Msg<M>), F>
 where
     for<'de> M: Message + serde::Deserialize<'de>,
-    F: FnMut(&mut Entity, Msg<M>),
+    F: Fn(&mut Entity, Msg<M>),
 {
     fn apply(&mut self, entity: &mut Entity, message_data: MessageData) {
         if message_data.type_name == M::TYPE_NAME.to_string() {
@@ -158,7 +158,7 @@ pub trait IntoProjection<Marker>: Sized {
 impl<'e, Entity, M, F> IntoProjection<(&'e mut Entity, Msg<M>)> for F
 where
     for<'de> M: Message + serde::Deserialize<'de>,
-    F: FnMut(&mut Entity, Msg<M>),
+    F: Fn(&mut Entity, Msg<M>),
 {
     fn into_projection(this: Self) -> FunctionProjection<(&'e mut Entity, Msg<M>), Self> {
         FunctionProjection {

@@ -127,7 +127,7 @@ macro_rules! function_params {
 
 macro_rules! impl_func {
     ([$($ty:ident $(,)?)*], $re:ident) => {
-        impl<F, $($ty,)* $re> Func<($($ty,)*), $re> for F where F: FnMut($($ty,)*) -> $re {}
+        impl<F, $($ty,)* $re> Func<($($ty,)*), $re> for F where F: Fn($($ty,)*) -> $re {}
     }
 }
 
@@ -136,7 +136,7 @@ macro_rules! impl_into_handler_self {
         #[allow(non_snake_case)]
         impl<Func, Executor, $($ty,)* $re> IntoHandler<Executor, ($($ty,)*), $re, Func> for FunctionHandler<Executor, ($($ty,)*), $re, Func>
         where
-            Func: FnMut($($ty,)*) -> $re,
+            Func: Fn($($ty,)*) -> $re,
         {
             fn into_handler(self) -> Self {
                 self
@@ -177,7 +177,7 @@ macro_rules! impl_handler {
         where
             for<'de> $first: Message + serde::Deserialize<'de>,
             $($ty: HandlerParam<E, S>,)*
-            F: FnMut(Msg<$first>, $($ty,)*) -> $re,
+            F: Fn(Msg<$first>, $($ty,)*) -> $re,
             $re: std::future::Future<Output = ()>,
             E: Clone + 'static,
             S: Clone,
@@ -204,7 +204,7 @@ macro_rules! impl_into_handler {
         where
             Msg: Message,
             $first: Deref<Target = Msg>,
-            Func: FnMut($first, $($ty,)*) -> $re,
+            Func: Fn($first, $($ty,)*) -> $re,
         {
             fn into_handler(self) -> FunctionHandler<E, ($first, $($ty,)*), $re, Self> {
                 FunctionHandler {
