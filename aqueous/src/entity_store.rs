@@ -39,7 +39,7 @@ where
         }
     }
 
-    pub fn with_projection<F, M>(&mut self, func: F) -> &mut Self
+    pub fn add_projection<F, M>(&mut self, func: F) -> &mut Self
     where
         for<'de> M: Message + Send + serde::Deserialize<'de> + 'static,
         F: Fn(&mut Entity, Msg<M>) + Send + 'static,

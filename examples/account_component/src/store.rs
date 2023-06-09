@@ -11,11 +11,11 @@ where
         let mut store = EntityStore::build(executor.clone(), settings);
 
         store
-            .with_projection(apply_opened)
-            .with_projection(apply_deposited)
-            .with_projection(apply_withdrawn)
-            .with_projection(apply_withdrawal_rejected)
-            .with_projection(apply_closed);
+            .add_projection(apply_opened)
+            .add_projection(apply_deposited)
+            .add_projection(apply_withdrawn)
+            .add_projection(apply_withdrawal_rejected)
+            .add_projection(apply_closed);
 
         Self(store)
     }
