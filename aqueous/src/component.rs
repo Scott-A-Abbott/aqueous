@@ -31,9 +31,14 @@ impl Component {
             });
         }
 
-        while let Some(res) = set.join_next().await {
-            res.unwrap();
-        }
+        // ## Should the entire component exit at any panic? Or just the consumer thread?
+        let previous_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            previous_hook(info);
+            std::process::exit(1);
+        }));
+
+        set.join_next().await;
     }
 }
 
