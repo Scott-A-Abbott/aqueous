@@ -71,6 +71,13 @@ where
 
         self
     }
+
+    pub fn add_projections<M>(&mut self, collection: impl IntoProjectionCollection<Entity, M>) -> &mut Self {
+        let ProjectionCollection { mut projections, .. } = collection.into_projection_collection();
+        self.projections.append(&mut projections);
+
+        self
+    }
 }
 
 impl<Entity> EntityStore<Entity>
@@ -141,7 +148,7 @@ where
 }
 
 pub trait IntoProjection<Marker>: Sized {
-    fn into_projection(this: Self) -> FunctionProjection<Marker, Self>;
+    fn into_projection(self) -> FunctionProjection<Marker, Self>;
 }
 
 impl<'e, Entity, M, F> IntoProjection<(&'e mut Entity, Msg<M>)> for F
@@ -149,10 +156,84 @@ where
     for<'de> M: Message + serde::Deserialize<'de>,
     F: Fn(&mut Entity, Msg<M>),
 {
-    fn into_projection(this: Self) -> FunctionProjection<(&'e mut Entity, Msg<M>), Self> {
+    fn into_projection(self) -> FunctionProjection<(&'e mut Entity, Msg<M>), Self> {
         FunctionProjection {
-            func: this,
+            func: self,
             marker: Default::default(),
         }
     }
 }
+
+pub struct ProjectionCollection<Entity, Marker> {
+    projections: Vec<Box<dyn Projection<Entity> + Send>>,
+    marker: PhantomData<Marker>,
+}
+
+pub trait IntoProjectionCollection<Entity, Marker> {
+    fn into_projection_collection(self) -> ProjectionCollection<Entity, Marker>;
+}
+
+impl<Entity, M, F> IntoProjectionCollection<Entity, (&'static mut Entity, Msg<M>)> for F
+where
+    Entity: Send,
+    F: Fn(&mut Entity, Msg<M>) + IntoProjection<(&'static mut Entity, Msg<M>)> + Send + Sized + 'static,
+    for<'de> M: Message + serde::Deserialize<'de> + Send + 'static,
+{
+    fn into_projection_collection(self) -> ProjectionCollection<Entity, (&'static mut Entity, Msg<M>)> {
+        let projection = self.into_projection();
+        let boxed_projection: Box<dyn Projection<Entity> + Send> = Box::new(projection);
+
+        ProjectionCollection {
+            projections: vec![boxed_projection],
+            marker: Default::default(),
+        }
+    }
+}
+
+#[rustfmt::skip]
+macro_rules! all_projection_tuples {
+    ($macro_name:ident) => {
+        $macro_name!((M1, F1));
+        $macro_name!((M1, F1), (M2, F2));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7), (M8, F8));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7), (M8, F8), (M9, F9));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7), (M8, F8), (M9, F9), (M10, F10));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7), (M8, F8), (M9, F9), (M10, F10), (M11, F11));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7), (M8, F8), (M9, F9), (M10, F10), (M11, F11), (M12, F12));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7), (M8, F8), (M9, F9), (M10, F10), (M11, F11), (M12, F12), (M13, F13));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7), (M8, F8), (M9, F9), (M10, F10), (M11, F11), (M12, F12), (M13, F13), (M14, F14));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7), (M8, F8), (M9, F9), (M10, F10), (M11, F11), (M12, F12), (M13, F13), (M14, F14), (M15, F15));
+        $macro_name!((M1, F1), (M2, F2), (M3, F3), (M4, F4), (M5, F5), (M6, F6), (M7, F7), (M8, F8), (M9, F9), (M10, F10), (M11, F11), (M12, F12), (M13, F13), (M14, F14), (M15, F15), (M16, F16));
+    };
+}
+
+macro_rules! impl_into_projection_collection {
+    ($(($msg:ident, $fn:ident) $(,)?)*) => {
+        #[allow(non_snake_case)]
+        impl<Entity, $($msg, $fn),*> IntoProjectionCollection<Entity, ($((&'static mut Entity, Msg<$msg>),)*)> for ($($fn,)*)
+        where
+            $(for<'de> $msg: Message + serde::Deserialize<'de> + 'static,)*
+            $($fn: IntoProjectionCollection<Entity, (&'static mut Entity, Msg<$msg>)>),*
+        {
+            fn into_projection_collection(self) -> ProjectionCollection<Entity, ($((&'static mut Entity, Msg<$msg>),)*)> {
+                let ($($fn,)*) = self;
+                let mut projections = Vec::new();
+
+                $( let ProjectionCollection { projections: mut $fn, .. } = $fn.into_projection_collection(); )*
+                $( projections.append(&mut $fn); )*
+
+                ProjectionCollection {
+                    projections,
+                    marker: Default::default(),
+                }
+            }
+        }
+    }
+}
+
+all_projection_tuples!(impl_into_projection_collection);
