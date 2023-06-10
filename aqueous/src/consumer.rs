@@ -4,6 +4,7 @@ use tokio::{
     sync::mpsc::{channel, Sender},
     time::{interval, Duration, Interval, MissedTickBehavior},
 };
+use std::marker::PhantomData;
 
 pub struct Consumer<Executor, Settings> {
     handlers: Vec<Box<dyn Handler<Executor, Settings> + Send>>,
@@ -13,7 +14,7 @@ pub struct Consumer<Executor, Settings> {
     position_update_counter: u64,
     batch_size: i64,
     poll_interval_millis: u64,
-    settings: Settings,
+    settings_marker: PhantomData<Settings>,
     category: Category,
     executor: Executor,
 }
@@ -31,7 +32,7 @@ impl<Executor, Settings> Consumer<Executor, Settings> {
             position_update_counter: 0,
             batch_size: 1000,
             poll_interval_millis: 100,
-            settings: Default::default(),
+            settings_marker: Default::default(),
             category,
             executor,
         }
@@ -74,11 +75,6 @@ impl<Executor, Settings> Consumer<Executor, Settings> {
         self
     }
 
-    pub fn settings(mut self, settings: Settings) -> Self {
-        self.settings = settings;
-        self
-    }
-
     pub fn correlation(mut self, correlation: &str) -> Self {
         self.correlation = Some(correlation.to_owned());
         self
@@ -107,15 +103,15 @@ impl<Executor, Settings> Consumer<Executor, Settings> {
         StreamName(category)
     }
 
-    pub fn dispatch(&mut self, message_data: MessageData)
+    pub fn dispatch(&mut self, message_data: MessageData, settings: Settings)
     where
         Settings: Clone,
         Executor: Clone,
     {
         for handler in self.handlers.iter_mut() {
             let message_data = message_data.clone();
+            let settings = settings.clone();
             let executor = self.executor.clone();
-            let settings = self.settings.clone();
 
             handler.call(message_data, executor, settings);
         }
@@ -129,7 +125,7 @@ where
     for<'e, 'c> &'e Executor: sqlx::Acquire<'c, Database = sqlx::Postgres>,
     for<'e, 'c> &'e Executor: sqlx::PgExecutor<'c>,
 {
-    pub async fn start(mut self) {
+    pub async fn start(mut self, settings: Settings) {
         let mut get = GetCategoryMessages::new(self.executor.clone());
 
         if let Some(correlation) = self.correlation.as_ref() {
@@ -157,7 +153,7 @@ where
             if let Some(message_data) = dispatch_receiver.recv().await {
                 let update_position = message_data.global_position;
 
-                self.dispatch(message_data);
+                self.dispatch(message_data, settings.clone());
                 self.update_position(update_position).await;
             }
         }
@@ -190,14 +186,14 @@ where
     }
 }
 
-impl<E, S> Start for Consumer<E, S>
+impl<E, S> Start<S> for Consumer<E, S>
 where
     E: Clone + Send + Sync + 'static,
     S: Clone,
     for<'e, 'c> &'e E: sqlx::Acquire<'c, Database = sqlx::Postgres>,
     for<'e, 'c> &'e E: sqlx::PgExecutor<'c>,
 {
-    fn start(&mut self) {
+    fn start(&mut self, settings: S) {
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
                 let handlers = self.handlers.drain(..).collect::<Vec<_>>();
@@ -209,11 +205,11 @@ where
                     position_update_counter: self.position_update_counter.clone(),
                     batch_size: self.batch_size.clone(),
                     poll_interval_millis: self.poll_interval_millis.clone(),
-                    settings: self.settings.clone(),
+                    settings_marker: Default::default(),
                     category: self.category.clone(),
                     executor: self.executor.clone(),
                 };
-                Consumer::start(consumer).await;
+                Consumer::start(consumer, settings).await;
             })
         });
     }

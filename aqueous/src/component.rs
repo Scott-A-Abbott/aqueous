@@ -1,33 +1,43 @@
 use tokio::task::JoinSet;
 
-pub struct Component {
-    consumers: Vec<Box<dyn Start + Send>>,
+pub struct Component<Settings = ()> {
+    consumers: Vec<Box<dyn Start<Settings> + Send>>,
+    settings: Settings,
 }
 
-impl Default for Component {
+impl<S> Default for Component<S>
+where
+    S: Default,
+{
     fn default() -> Self {
         Self {
             consumers: Vec::new(),
+            settings: Default::default(),
         }
     }
 }
 
-impl Component {
+impl<S> Component<S> {
     pub fn add_consumer<C>(mut self, consumer: C) -> Self
     where
-        C: Start + Send + 'static,
+        C: Start<S> + Send + 'static,
     {
-        let boxed_consumer: Box<dyn Start + Send> = Box::new(consumer);
+        let boxed_consumer: Box<dyn Start<S> + Send> = Box::new(consumer);
         self.consumers.push(boxed_consumer);
         self
     }
 
-    pub async fn start(self) {
+    pub async fn start(self)
+    where
+        S: Clone + Send + 'static,
+    {
         let mut set = JoinSet::new();
 
         for mut consumer in self.consumers {
+            let settings = self.settings.clone();
+
             set.spawn_blocking(move || {
-                consumer.start();
+                consumer.start(settings);
             });
         }
 
@@ -42,6 +52,6 @@ impl Component {
     }
 }
 
-pub trait Start {
-    fn start(&mut self);
+pub trait Start<S> {
+    fn start(&mut self, settings: S);
 }
