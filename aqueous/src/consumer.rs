@@ -16,6 +16,7 @@ pub struct Consumer<Settings = ()> {
     position_update_counter: u64,
     batch_size: i64,
     poll_interval_millis: u64,
+    strict: bool,
     settings_marker: PhantomData<Settings>,
     category: Category,
 }
@@ -34,6 +35,7 @@ impl<Settings> Consumer<Settings> {
             position_update_counter: 0,
             batch_size: 1000,
             poll_interval_millis: 100,
+            strict: false,
             settings_marker: Default::default(),
             category,
         }
@@ -100,6 +102,11 @@ impl<Settings> Consumer<Settings> {
         self
     }
 
+    pub fn strict(mut self) -> Self {
+        self.strict = true;
+        self
+    }
+
     pub fn position_update_interval(mut self, interval: u64) -> Self {
         self.position_update_interval = interval;
         self
@@ -122,15 +129,24 @@ impl<Settings> Consumer<Settings> {
     where
         Settings: Clone,
     {
+        let mut processed_message = false;
+
         for handler in self.handlers.iter_mut() {
             let message_data = message_data.clone();
             let settings = settings.clone();
 
-            handler.call(message_data, pool.clone(), settings);
+           let was_processed = handler.call(message_data, pool.clone(), settings);
+           if was_processed {
+               processed_message = was_processed;
+           }
         }
 
         if let Some(catchall) = self.catchall.as_mut() {
-            catchall.call(message_data, pool, settings);
+            processed_message = catchall.call(message_data.clone(), pool, settings);
+        }
+
+        if self.strict && !processed_message {
+            panic!("Did not process message while strict: {:?}", message_data);
         }
     }
 
@@ -206,17 +222,17 @@ where
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
                 let handlers = self.handlers.drain(..).collect::<Vec<_>>();
-                let catchall = self.catchall.take();
 
                 let consumer = Consumer {
                     handlers,
-                    catchall,
-                    identifier: self.identifier.clone(),
-                    correlation: self.correlation.clone(),
-                    position_update_interval: self.position_update_interval.clone(),
-                    position_update_counter: self.position_update_counter.clone(),
-                    batch_size: self.batch_size.clone(),
-                    poll_interval_millis: self.poll_interval_millis.clone(),
+                    catchall: self.catchall.take(),
+                    identifier: self.identifier.take(),
+                    correlation: self.correlation.take(),
+                    position_update_interval: self.position_update_interval,
+                    position_update_counter: self.position_update_counter,
+                    batch_size: self.batch_size,
+                    poll_interval_millis: self.poll_interval_millis,
+                    strict: self.strict,
                     settings_marker: Default::default(),
                     category: self.category.clone(),
                 };
