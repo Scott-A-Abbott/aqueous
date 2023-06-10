@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let pool = sqlx::postgres::PgPoolOptions::new()
+    let pool = PgPoolOptions::new()
         .connect("postgres://message_store@localhost/message_store")
         .await?;
 

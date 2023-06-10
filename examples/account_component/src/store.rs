@@ -1,14 +1,11 @@
 use crate::{messages::events::*, Account};
-use aqueous::{EntityStore, HandlerParam, Msg};
+use aqueous::{EntityStore, HandlerParam, Msg, PgPool};
 
-pub struct Store<Executor>(pub EntityStore<Account, Executor>);
+pub struct Store(pub EntityStore<Account>);
 
-impl<Executor> HandlerParam<Executor, ()> for Store<Executor>
-where
-    Executor: Clone + 'static,
-{
-    fn build(executor: Executor, settings: ()) -> Self {
-        let mut store = EntityStore::build(executor.clone(), settings);
+impl HandlerParam for Store {
+    fn build(pool: PgPool, settings: ()) -> Self {
+        let mut store = EntityStore::build(pool.clone(), settings);
 
         store
             .add_projection(apply_opened)

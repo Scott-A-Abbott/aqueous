@@ -1,6 +1,5 @@
 use account_component::consumers::commands::*;
-use aqueous::Component;
-use sqlx::postgres::PgPoolOptions;
+use aqueous::{Component, PgPoolOptions};
 use std::error::Error;
 
 #[tokio::main]
@@ -10,8 +9,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .await?;
 
     Component::default()
-        .add_consumer(CommandsConsumer::build(pool.clone()))
-        .add_consumer(TransactionsConsumer::build(pool.clone()))
+        .add_consumer(CommandsConsumer::build())
+        .add_consumer(TransactionsConsumer::build())
+        .with_pool(pool)
         .start()
         .await;
 

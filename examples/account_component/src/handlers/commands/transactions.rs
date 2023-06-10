@@ -3,13 +3,12 @@ use crate::{
     AccountCategory, Store,
 };
 use aqueous::{Msg, StreamID, WriteMessages};
-use sqlx::PgPool;
 
 pub async fn handle_deposit(
     deposit: Msg<Deposit>,
-    Store(mut store): Store<PgPool>,
+    Store(mut store): Store,
     AccountCategory(category): AccountCategory,
-    mut writer: WriteMessages<PgPool>,
+    mut writer: WriteMessages,
 ) {
     let stream_id = StreamID::new(deposit.account_id);
     let stream_name = category.stream_name(stream_id);
@@ -40,9 +39,9 @@ pub async fn handle_deposit(
 
 pub async fn handle_withdraw(
     withdraw: Msg<Withdraw>,
-    Store(mut store): Store<PgPool>,
+    Store(mut store): Store,
     AccountCategory(category): AccountCategory,
-    mut writer: WriteMessages<PgPool>,
+    mut writer: WriteMessages,
 ) {
     let stream_id = StreamID::new(withdraw.account_id);
     let stream_name = category.stream_name(stream_id);

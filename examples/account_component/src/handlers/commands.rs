@@ -5,12 +5,11 @@ use crate::{
     AccountCategory, Store, TransactionCategory,
 };
 use aqueous::{Msg, StreamID, WriteMessages};
-use sqlx::PgPool;
 
 pub async fn handle_open(
     open: Msg<Open>,
-    Store(mut store): Store<PgPool>,
-    mut writer: WriteMessages<PgPool>,
+    Store(mut store): Store,
+    mut writer: WriteMessages,
     AccountCategory(category): AccountCategory,
 ) {
     let account_stream_id = StreamID::new(open.account_id);
@@ -35,7 +34,7 @@ pub async fn handle_open(
 
 pub async fn handle_deposit(
     deposit: Msg<Deposit>,
-    mut writer: WriteMessages<PgPool>,
+    mut writer: WriteMessages,
     TransactionCategory(category): TransactionCategory,
 ) {
     let stream_id = StreamID::new(deposit.deposit_id);
@@ -43,12 +42,16 @@ pub async fn handle_deposit(
 
     let deposit: Msg<Deposit> = Msg::follow(deposit);
 
-    let _ = writer.with_message(deposit).initial().execute(stream_name).await;
+    let _ = writer
+        .with_message(deposit)
+        .initial()
+        .execute(stream_name)
+        .await;
 }
 
 pub async fn handle_withdraw(
     withdraw: Msg<Withdraw>,
-    mut writer: WriteMessages<PgPool>,
+    mut writer: WriteMessages,
     TransactionCategory(category): TransactionCategory,
 ) {
     let stream_id = StreamID::new(withdraw.withdrawal_id);
@@ -56,13 +59,17 @@ pub async fn handle_withdraw(
 
     let withdraw: Msg<Withdraw> = Msg::follow(withdraw);
 
-    let _ = writer.with_message(withdraw).initial().execute(stream_name).await;
+    let _ = writer
+        .with_message(withdraw)
+        .initial()
+        .execute(stream_name)
+        .await;
 }
 
 pub async fn handle_close(
     close: Msg<Close>,
-    Store(mut store): Store<PgPool>,
-    mut writer: WriteMessages<PgPool>,
+    Store(mut store): Store,
+    mut writer: WriteMessages,
     AccountCategory(category): AccountCategory,
 ) {
     let account_stream_id = StreamID::new(close.account_id);

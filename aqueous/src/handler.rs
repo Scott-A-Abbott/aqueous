@@ -1,48 +1,46 @@
 use crate::{Message, MessageData, Msg};
+use sqlx::PgPool;
 use std::{marker::PhantomData, ops::Deref};
 
-pub trait Handler<Executor, Settings> {
-    fn call(&mut self, message_data: MessageData, executor: Executor, settings: Settings);
+pub trait Handler<Settings = ()> {
+    fn call(&mut self, message_data: MessageData, pool: PgPool, settings: Settings);
 }
 
-pub trait HandlerParam<Executor, Settings>: Sized {
-    fn build(executor: Executor, settings: Settings) -> Self;
+pub trait HandlerParam<Settings = ()>: Sized {
+    fn build(pool: PgPool, settings: Settings) -> Self;
 }
 
-pub struct FunctionHandler<ExecutorMarker, ParamsMarker, ReturnMarker, F> {
+pub struct FunctionHandler<Params, Return, F> {
     func: F,
-    executor_marker: PhantomData<ExecutorMarker>,
-    params_marker: PhantomData<ParamsMarker>,
-    return_marker: PhantomData<ReturnMarker>,
-}
-
-pub trait IntoHandler<ExecutorMarker, ParamsMarker, ReturnMarker, Func>: Sized {
-    fn into_handler(self) -> FunctionHandler<ExecutorMarker, ParamsMarker, ReturnMarker, Func>;
-}
-
-pub struct HandlerCollection<Params, Return, Executor, Settings> {
-    pub handlers: Vec<Box<dyn Handler<Executor, Settings> + Send>>,
     params_marker: PhantomData<Params>,
     return_marker: PhantomData<Return>,
 }
 
-pub trait IntoHandlerCollection<Params, Return, Executor, Settings>: Sized {
-    fn into_handler_collection(self) -> HandlerCollection<Params, Return, Executor, Settings>;
+pub trait IntoHandler<Params, Return, Func>: Sized {
+    fn into_handler(self) -> FunctionHandler<Params, Return, Func>;
 }
 
-impl<F, Params, Return, Executor, Settings>
-    IntoHandlerCollection<Params, Return, Executor, Settings> for F
+pub struct HandlerCollection<Params, Return, Settings = ()> {
+    pub handlers: Vec<Box<dyn Handler<Settings> + Send>>,
+    params_marker: PhantomData<Params>,
+    return_marker: PhantomData<Return>,
+}
+
+pub trait IntoHandlerCollection<Params, Return, Settings = ()>: Sized {
+    fn into_handler_collection(self) -> HandlerCollection<Params, Return, Settings>;
+}
+
+impl<F, Params, Return, Settings> IntoHandlerCollection<Params, Return, Settings> for F
 where
     Params: Send + 'static,
-    Executor: Send + 'static,
     Settings: Send + 'static,
     Return: std::future::Future<Output = ()> + Send + 'static,
-    F: Func<Params, Return> + IntoHandler<Executor, Params, Return, F> + Send + 'static,
-    FunctionHandler<Executor, Params, Return, F>: Handler<Executor, Settings>,
+    F: Func<Params, Return> + IntoHandler<Params, Return, F> + Send + 'static,
+    FunctionHandler<Params, Return, F>: Handler<Settings>,
 {
-    fn into_handler_collection(self) -> HandlerCollection<Params, Return, Executor, Settings> {
+    fn into_handler_collection(self) -> HandlerCollection<Params, Return, Settings> {
         let function_handler = self.into_handler();
-        let boxed_handler: Box<dyn Handler<Executor, Settings> + Send> = Box::new(function_handler);
+        let boxed_handler: Box<dyn Handler<Settings> + Send> = Box::new(function_handler);
         let handlers = vec![boxed_handler];
 
         HandlerCollection {
@@ -80,11 +78,11 @@ macro_rules! all_function_tuples {
 macro_rules! impl_into_handler_collection {
     ($(($param:ident, $re:ident, $fn:ident) $(,)?)*) => {
         #[allow(non_snake_case)]
-        impl<Executor, Settings, $($param, $re, $fn),*> IntoHandlerCollection<($($param,)*), ($($re,)*), Executor, Settings> for ($($fn,)*)
+        impl<Settings, $($param, $re, $fn),*> IntoHandlerCollection<($($param,)*), ($($re,)*), Settings> for ($($fn,)*)
         where
-            $($fn: IntoHandlerCollection<$param, $re, Executor, Settings>),*
+            $($fn: IntoHandlerCollection<$param, $re, Settings>),*
         {
-            fn into_handler_collection(self) -> HandlerCollection<($($param,)*), ($($re,)*), Executor, Settings> {
+            fn into_handler_collection(self) -> HandlerCollection<($($param,)*), ($($re,)*), Settings> {
                 let ($($fn,)*) = self;
                 let mut handlers = Vec::new();
 
@@ -134,7 +132,7 @@ macro_rules! impl_func {
 macro_rules! impl_into_handler_self {
     ([$($ty:ident $(,)?)*], $re:ident) => {
         #[allow(non_snake_case)]
-        impl<Func, Executor, $($ty,)* $re> IntoHandler<Executor, ($($ty,)*), $re, Func> for FunctionHandler<Executor, ($($ty,)*), $re, Func>
+        impl<Func, $($ty,)* $re> IntoHandler<($($ty,)*), $re, Func> for FunctionHandler<($($ty,)*), $re, Func>
         where
             Func: Fn($($ty,)*) -> $re,
         {
@@ -173,19 +171,18 @@ macro_rules! function_params_with_first {
 macro_rules! impl_handler {
    ($first:ident, [$($ty:ident $(,)?)*], $re:ident) => {
         #[allow(non_snake_case)]
-        impl<$first, $($ty,)* $re, F, E, S> Handler<E, S> for FunctionHandler<E, (Msg<$first>, $($ty,)*), $re, F>
+        impl<$first, $($ty,)* $re, F, S> Handler<S> for FunctionHandler<(Msg<$first>, $($ty,)*), $re, F>
         where
             for<'de> $first: Message + serde::Deserialize<'de>,
-            $($ty: HandlerParam<E, S>,)*
+            $($ty: HandlerParam<S>,)*
             F: Fn(Msg<$first>, $($ty,)*) -> $re,
             $re: std::future::Future<Output = ()>,
-            E: Clone + 'static,
             S: Clone,
         {
-            fn call(&mut self, message_data: MessageData, _executor: E, _settings: S) {
+            fn call(&mut self, message_data: MessageData, _pool: PgPool, _settings: S) {
                 if message_data.type_name == $first::TYPE_NAME.to_string() {
                     let msg: Msg<$first> = Msg::from_data(message_data.clone()).unwrap();
-                    $(let $ty = $ty::build(_executor.clone(), _settings.clone());)*
+                    $(let $ty = $ty::build(_pool.clone(), _settings.clone());)*
                     tokio::task::block_in_place(move || {
                         tokio::runtime::Handle::current().block_on(async move {
                             (self.func)(msg, $($ty,)*).await;
@@ -200,16 +197,15 @@ macro_rules! impl_handler {
 macro_rules! impl_into_handler {
     ($first:ident, [$($ty:ident $(,)?)*], $re:ident) => {
         #[allow(non_snake_case)]
-        impl<E, Msg, Func, $first, $($ty,)* $re> IntoHandler<E, ($first, $($ty,)*), $re, Func> for Func
+        impl<Msg, Func, $first, $($ty,)* $re> IntoHandler<($first, $($ty,)*), $re, Func> for Func
         where
             Msg: Message,
             $first: Deref<Target = Msg>,
             Func: Fn($first, $($ty,)*) -> $re,
         {
-            fn into_handler(self) -> FunctionHandler<E, ($first, $($ty,)*), $re, Self> {
+            fn into_handler(self) -> FunctionHandler<($first, $($ty,)*), $re, Self> {
                 FunctionHandler {
                     func: self,
-                    executor_marker: Default::default(),
                     params_marker: Default::default(),
                     return_marker: Default::default(),
                 }

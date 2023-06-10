@@ -1,25 +1,20 @@
 use crate::*;
-use sqlx::{types::Json, Acquire, PgExecutor, Postgres};
+use sqlx::{types::Json, PgPool};
 use std::error::Error;
 
-pub struct GetStreamVersion<Executor> {
-    executor: Executor,
+pub struct GetStreamVersion {
+    pool: PgPool,
 }
 
-impl<Executor> GetStreamVersion<Executor> {
-    pub fn new(executor: Executor) -> Self {
-        Self { executor }
+impl GetStreamVersion {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
     }
-}
 
-impl<Executor> GetStreamVersion<Executor>
-where
-    for<'e, 'c> &'e Executor: PgExecutor<'c>,
-{
     pub async fn execute(&self, stream_name: StreamName) -> Result<Version, Box<dyn Error>> {
         let StreamName(stream_name) = stream_name;
 
-        #[derive(sqlx::FromRow, serde::Deserialize)]
+        #[derive(sqlx::FromRow)]
         struct StreamVersion {
             stream_version: Option<i64>,
         }
@@ -27,7 +22,7 @@ where
         let StreamVersion { stream_version } =
             sqlx::query_as("SELECT * FROM stream_version($1::varchar)")
                 .bind(stream_name)
-                .fetch_one(&self.executor)
+                .fetch_one(&self.pool)
                 .await?;
 
         let version = match stream_version {
@@ -39,21 +34,21 @@ where
     }
 }
 
-impl<Executor, Settings> HandlerParam<Executor, Settings> for GetStreamVersion<Executor> {
-    fn build(executor: Executor, _: Settings) -> Self {
-        Self::new(executor)
+impl<Settings> HandlerParam<Settings> for GetStreamVersion {
+    fn build(pool: PgPool, _: Settings) -> Self {
+        Self::new(pool)
     }
 }
 
-pub struct GetLastStreamMessage<Executor> {
-    executor: Executor,
+pub struct GetLastStreamMessage {
+    pool: PgPool,
     message_type: Option<String>,
 }
 
-impl<Executor> GetLastStreamMessage<Executor> {
-    pub fn new(executor: Executor) -> Self {
+impl GetLastStreamMessage {
+    pub fn new(pool: PgPool) -> Self {
         Self {
-            executor,
+            pool,
             message_type: None,
         }
     }
@@ -62,12 +57,7 @@ impl<Executor> GetLastStreamMessage<Executor> {
         self.message_type = Some(message_type.to_string());
         self
     }
-}
 
-impl<Executor> GetLastStreamMessage<Executor>
-where
-    for<'e, 'c> &'e Executor: PgExecutor<'c>,
-{
     pub async fn execute(
         &mut self,
         stream_name: StreamName,
@@ -77,29 +67,29 @@ where
         sqlx::query_as("SELECT * from get_last_stream_message($1::varchar, $2::varchar);")
             .bind(stream_name)
             .bind(&self.message_type)
-            .fetch_optional(&self.executor)
+            .fetch_optional(&self.pool)
             .await
             .map_err(|e| e.into())
     }
 }
 
-impl<Executor, Settings> HandlerParam<Executor, Settings> for GetLastStreamMessage<Executor> {
-    fn build(executor: Executor, _: Settings) -> Self {
-        Self::new(executor)
+impl<Settings> HandlerParam<Settings> for GetLastStreamMessage {
+    fn build(pool: PgPool, _: Settings) -> Self {
+        Self::new(pool)
     }
 }
 
-pub struct GetStreamMessages<Executor> {
-    executor: Executor,
+pub struct GetStreamMessages {
+    pool: PgPool,
     position: Option<i64>,
     batch_size: Option<i64>,
     condition: Option<String>,
 }
 
-impl<Executor> GetStreamMessages<Executor> {
-    pub fn new(executor: Executor) -> Self {
+impl GetStreamMessages {
+    pub fn new(pool: PgPool) -> Self {
         Self {
-            executor,
+            pool,
             position: None,
             batch_size: None,
             condition: None,
@@ -120,12 +110,7 @@ impl<Executor> GetStreamMessages<Executor> {
         self.condition = Some(condition.to_owned());
         self
     }
-}
 
-impl<Executor> GetStreamMessages<Executor>
-where
-    for<'e, 'c> &'e Executor: PgExecutor<'c>,
-{
     pub async fn execute(
         &mut self,
         stream_name: StreamName,
@@ -139,20 +124,20 @@ where
         .bind(self.position.unwrap_or_else(|| 0))
         .bind(self.batch_size.unwrap_or_else(|| 1000))
         .bind(&self.condition)
-        .fetch_all(&self.executor)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| e.into())
     }
 }
 
-impl<Executor, Settings> HandlerParam<Executor, Settings> for GetStreamMessages<Executor> {
-    fn build(executor: Executor, _: Settings) -> Self {
-        Self::new(executor)
+impl<Settings> HandlerParam<Settings> for GetStreamMessages {
+    fn build(pool: PgPool, _: Settings) -> Self {
+        Self::new(pool)
     }
 }
 
-pub struct GetCategoryMessages<Executor> {
-    executor: Executor,
+pub struct GetCategoryMessages {
+    pool: PgPool,
     position: Option<i64>,
     batch_size: Option<i64>,
     correlation: Option<String>,
@@ -161,10 +146,10 @@ pub struct GetCategoryMessages<Executor> {
     condition: Option<String>,
 }
 
-impl<Executor> GetCategoryMessages<Executor> {
-    pub fn new(executor: Executor) -> Self {
+impl GetCategoryMessages {
+    pub fn new(pool: PgPool) -> Self {
         Self {
-            executor,
+            pool,
             position: None,
             batch_size: None,
             correlation: None,
@@ -203,12 +188,7 @@ impl<Executor> GetCategoryMessages<Executor> {
         self.condition = Some(condition.to_owned());
         self
     }
-}
 
-impl<Executor> GetCategoryMessages<Executor>
-where
-    for<'e, 'c> &'e Executor: PgExecutor<'c>,
-{
     pub async fn execute(&self, category: Category) -> Result<Vec<MessageData>, Box<dyn Error>> {
         let Category(category) = category;
 
@@ -222,20 +202,20 @@ where
         .bind(&self.consumer_group_member)
         .bind(&self.consumer_group_size)
         .bind(&self.condition)
-        .fetch_all(&self.executor)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| e.into())
     }
 }
 
-impl<Executor, Settings> HandlerParam<Executor, Settings> for GetCategoryMessages<Executor> {
-    fn build(executor: Executor, _: Settings) -> Self {
-        Self::new(executor)
+impl<Settings> HandlerParam<Settings> for GetCategoryMessages {
+    fn build(pool: PgPool, _: Settings) -> Self {
+        Self::new(pool)
     }
 }
 
-pub struct WriteMessages<Executor> {
-    executor: Executor,
+pub struct WriteMessages {
+    pool: PgPool,
     expected_version: Option<Version>,
     messages: Vec<WriteMessageData>,
 }
@@ -248,10 +228,10 @@ struct WriteMessageData {
     metadata: Option<Json<Metadata>>,
 }
 
-impl<Executor> WriteMessages<Executor> {
-    pub fn new(executor: Executor) -> Self {
+impl WriteMessages {
+    pub fn new(pool: PgPool) -> Self {
         Self {
-            executor,
+            pool,
             expected_version: None,
             messages: Vec::new(),
         }
@@ -293,12 +273,7 @@ impl<Executor> WriteMessages<Executor> {
 
         self
     }
-}
 
-impl<Executor> WriteMessages<Executor>
-where
-    for<'e, 'c> &'e Executor: Acquire<'c, Database = Postgres>,
-{
     pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, Box<dyn Error>> {
         #[derive(sqlx::FromRow)]
         struct LastPosition(i64);
@@ -306,7 +281,7 @@ where
         let mut last_position = LastPosition(-1);
         let StreamName(ref stream_name) = stream_name;
 
-        let mut transaction = self.executor.begin().await?;
+        let mut transaction = self.pool.begin().await?;
 
         for message in self.messages.iter() {
             let id = uuid::Uuid::new_v4();
@@ -342,8 +317,8 @@ where
     }
 }
 
-impl<Executor, Settings> HandlerParam<Executor, Settings> for WriteMessages<Executor> {
-    fn build(executor: Executor, _: Settings) -> Self {
-        Self::new(executor)
+impl<Settings> HandlerParam<Settings> for WriteMessages {
+    fn build(pool: PgPool, _: Settings) -> Self {
+        Self::new(pool)
     }
 }

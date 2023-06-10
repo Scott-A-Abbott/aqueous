@@ -1,5 +1,6 @@
 use crate::*;
 use moka::future::Cache;
+use sqlx::PgPool;
 use std::{
     any::{Any, TypeId},
     marker::PhantomData,
@@ -21,21 +22,21 @@ impl Default for Version {
     }
 }
 
-pub struct EntityStore<Entity, Executor = sqlx::PgPool> {
+pub struct EntityStore<Entity> {
     projections: Vec<Box<dyn Projection<Entity> + Send>>,
     cache: Cache<String, (Entity, Version)>,
-    executor: Executor,
+    pool: PgPool,
 }
 
-impl<Entity, Executor> EntityStore<Entity, Executor>
+impl<Entity> EntityStore<Entity>
 where
     Entity: Clone + Send + Sync + 'static,
 {
-    pub fn new(executor: Executor, cache: Cache<String, (Entity, Version)>) -> Self {
+    pub fn new(pool: PgPool, cache: Cache<String, (Entity, Version)>) -> Self {
         Self {
             projections: Vec::new(),
             cache,
-            executor,
+            pool,
         }
     }
 
@@ -66,7 +67,7 @@ where
             })
             .await;
 
-        let current_version = GetStreamVersion::new(self.executor.clone())
+        let current_version = GetStreamVersion::new(self.pool.clone())
             .execute(stream_name.clone())
             .await
             .unwrap();
@@ -75,7 +76,7 @@ where
             return (entity, version);
         }
 
-        let messages = GetStreamMessages::new(self.executor.clone())
+        let messages = GetStreamMessages::new(self.pool.clone())
             .position(version.0 + 1)
             .execute(stream_name.clone())
             .await
@@ -97,12 +98,11 @@ where
     }
 }
 
-impl<Entity, Executor, Settings> HandlerParam<Executor, Settings> for EntityStore<Entity, Executor>
+impl<Entity, Settings> HandlerParam<Settings> for EntityStore<Entity>
 where
     Entity: Clone + Send + Sync + 'static,
-    Executor: Clone + 'static,
 {
-    fn build(executor: Executor, _: Settings) -> Self {
+    fn build(pool: PgPool, _: Settings) -> Self {
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
                 let entity_cache = ENTITY_CACHE.get_or_init(|| Cache::new(5));
@@ -122,7 +122,7 @@ where
                     .downcast_ref::<Cache<String, (Entity, Version)>>()
                     .unwrap();
 
-                let store = Self::new(executor.clone(), cache.clone());
+                let store = Self::new(pool, cache.clone());
                 store
             })
         })

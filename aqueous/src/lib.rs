@@ -12,4 +12,8 @@ pub use entity_store::*;
 pub use handler::*;
 pub use message::*;
 pub use message_store::*;
+pub use sqlx::{
+    postgres::{PgConnectOptions, PgPoolOptions},
+    PgPool,
+};
 pub use stream_name::*;
