@@ -5,7 +5,7 @@ pub struct Store(pub EntityStore<Account>);
 
 impl HandlerParam for Store {
     fn build(pool: PgPool, settings: ()) -> Self {
-        let mut store = EntityStore::build(pool.clone(), settings);
+        let mut store = EntityStore::build(pool, settings);
 
         store
             .add_projection(apply_opened)
