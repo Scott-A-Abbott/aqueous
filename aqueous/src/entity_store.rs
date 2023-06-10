@@ -36,7 +36,7 @@ where
                     .get_with(
                         TypeId::of::<Cache<StreamName, (Entity, Version)>>(),
                         async move {
-                            let cache: Cache<String, (Entity, Version)> = Cache::new(10_000);
+                            let cache: Cache<StreamName, (Entity, Version)> = Cache::new(10_000);
                             let boxed_cache: Box<dyn Any + Send + Sync> = Box::new(cache);
 
                             Arc::new(boxed_cache)
