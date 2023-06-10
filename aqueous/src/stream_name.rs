@@ -6,7 +6,7 @@ pub mod separator {
     pub const COMPOUND: &'static str = "+";
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct StreamName(pub String);
 
 impl StreamName {

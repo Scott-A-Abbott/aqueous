@@ -1,11 +1,12 @@
-use crate::{messages::events::*, Account};
+use crate::{messages::events::*, Account, AccountCategory};
 use aqueous::{EntityStore, HandlerParam, Msg, PgPool};
 
 pub struct Store(pub EntityStore<Account>);
 
 impl HandlerParam for Store {
-    fn build(pool: PgPool, settings: ()) -> Self {
-        let mut store = EntityStore::build(pool, settings);
+    fn build(pool: PgPool, _: ()) -> Self {
+        let AccountCategory(category) = AccountCategory::new();
+        let mut store = EntityStore::build(pool, category);
 
         store
             .add_projection(apply_opened)

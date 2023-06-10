@@ -12,10 +12,8 @@ pub async fn handle_open(
     mut writer: WriteMessages,
     AccountCategory(category): AccountCategory,
 ) {
-    let account_stream_id = StreamID::new(open.account_id);
-    let stream_name = category.stream_name(account_stream_id);
-
-    let (account, version) = store.fetch(stream_name.clone()).await;
+    let stream_id = StreamID::new(open.account_id);
+    let (account, version) = store.fetch(stream_id.clone()).await;
 
     if account.was_opened() {
         // ## Add logging
@@ -23,6 +21,7 @@ pub async fn handle_open(
     }
 
     let opened: Msg<Opened> = Msg::follow(open);
+    let stream_name = category.stream_name(stream_id);
 
     writer
         .with_message(opened)
@@ -72,10 +71,8 @@ pub async fn handle_close(
     mut writer: WriteMessages,
     AccountCategory(category): AccountCategory,
 ) {
-    let account_stream_id = StreamID::new(close.account_id);
-    let stream_name = category.stream_name(account_stream_id);
-
-    let (account, version) = store.fetch(stream_name.clone()).await;
+    let stream_id = StreamID::new(close.account_id);
+    let (account, version) = store.fetch(stream_id.clone()).await;
 
     if account.was_closed() {
         // ## Add logging
@@ -83,6 +80,7 @@ pub async fn handle_close(
     }
 
     let closed: Msg<Closed> = Msg::follow(close);
+    let stream_name = category.stream_name(stream_id);
 
     writer
         .with_message(closed)

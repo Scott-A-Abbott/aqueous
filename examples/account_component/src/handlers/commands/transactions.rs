@@ -11,9 +11,7 @@ pub async fn handle_deposit(
     mut writer: WriteMessages,
 ) {
     let stream_id = StreamID::new(deposit.account_id);
-    let stream_name = category.stream_name(stream_id);
-
-    let (account, version) = store.fetch(stream_name.clone()).await;
+    let (account, version) = store.fetch(stream_id.clone()).await;
 
     let sequence = deposit
         .metadata
@@ -28,6 +26,8 @@ pub async fn handle_deposit(
 
     let mut deposited: Msg<Deposited> = Msg::follow(deposit);
     deposited.sequence = sequence;
+
+    let stream_name = category.stream_name(stream_id);
 
     writer
         .with_message(deposited)
@@ -44,9 +44,7 @@ pub async fn handle_withdraw(
     mut writer: WriteMessages,
 ) {
     let stream_id = StreamID::new(withdraw.account_id);
-    let stream_name = category.stream_name(stream_id);
-
-    let (account, version) = store.fetch(stream_name.clone()).await;
+    let (account, version) = store.fetch(stream_id.clone()).await;
 
     let sequence = withdraw
         .metadata
@@ -58,6 +56,8 @@ pub async fn handle_withdraw(
         // ## Add logging
         return;
     }
+
+    let stream_name = category.stream_name(stream_id);
 
     if !account.has_sufficient_funds(withdraw.amount) {
         let mut withdrawal_rejected: Msg<WithdrawalRejected> = Msg::follow(withdraw);
