@@ -20,6 +20,16 @@ pub trait IntoHandler<Params, Return, Func>: Sized {
     fn into_handler(self) -> FunctionHandler<Params, Return, Func>;
 }
 
+pub struct CatchallFunctionHandler<Params, Return, F> {
+    func: F,
+    params_marker: PhantomData<Params>,
+    return_marker: PhantomData<Return>,
+}
+
+pub trait IntoCatchallHandler<Params, Return, Func>: Sized {
+    fn into_catchall_handler(self) -> CatchallFunctionHandler<Params, Return, Func>;
+}
+
 pub struct HandlerCollection<Params, Return, Settings = ()> {
     pub handlers: Vec<Box<dyn Handler<Settings> + Send>>,
     params_marker: PhantomData<Params>,
@@ -143,6 +153,49 @@ macro_rules! impl_into_handler_self {
     }
 }
 
+macro_rules! impl_into_catchall {
+    ([$($ty:ident $(,)?)*], $re:ident) => {
+        impl<Func, $($ty,)* $re> IntoCatchallHandler<(MessageData, $($ty,)*), $re, Func> for Func
+        where
+            Func: Fn(MessageData, $($ty,)*) -> $re,
+        {
+            fn into_catchall_handler(self) -> CatchallFunctionHandler<(MessageData, $($ty),*), $re, Func> {
+                CatchallFunctionHandler {
+                    func: self,
+                    params_marker: Default::default(),
+                    return_marker: Default::default(),
+                }
+            }
+        }
+    }
+}
+impl_into_catchall!([], R);
+
+macro_rules! impl_handler_for_catchall {
+   ([$($ty:ident $(,)?)*], $re:ident) => {
+        #[allow(non_snake_case)]
+        impl<$($ty,)* $re, F, S> Handler<S> for CatchallFunctionHandler<(MessageData, $($ty,)*), $re, F>
+        where
+            $($ty: HandlerParam<S>,)*
+            F: Fn(MessageData, $($ty,)*) -> $re,
+            $re: std::future::Future<Output = ()>,
+            S: Clone,
+        {
+            fn call(&mut self, message_data: MessageData, _pool: PgPool, _settings: S) {
+                $(let $ty = $ty::build(_pool.clone(), _settings.clone());)*
+                tokio::task::block_in_place(move || {
+                    tokio::runtime::Handle::current().block_on(async move {
+                        (self.func)(message_data, $($ty,)*).await;
+                    });
+                });
+            }
+        }
+    }
+}
+impl_handler_for_catchall!([], R);
+
+function_params!(impl_into_catchall);
+function_params!(impl_handler_for_catchall);
 function_params!(impl_into_handler_self);
 function_params!(impl_func);
 

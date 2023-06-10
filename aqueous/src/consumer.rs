@@ -9,6 +9,7 @@ use tokio::{
 
 pub struct Consumer<Settings = ()> {
     handlers: Vec<Box<dyn Handler<Settings> + Send>>,
+    catchall: Option<Box<dyn Handler<Settings> + Send>>,
     identifier: Option<CategoryType>,
     correlation: Option<String>,
     position_update_interval: u64,
@@ -26,6 +27,7 @@ impl<Settings> Consumer<Settings> {
     {
         Self {
             handlers: Vec::new(),
+            catchall: None,
             identifier: None,
             correlation: None,
             position_update_interval: 100,
@@ -59,6 +61,21 @@ impl<Settings> Consumer<Settings> {
     ) -> Self {
         let HandlerCollection { mut handlers, .. } = handlers.into_handler_collection();
         self.handlers.append(&mut handlers);
+
+        self
+    }
+
+    pub fn catchall<Params, Return, Func>(mut self, catchall: Func) -> Self
+    where
+        Params: Send + 'static,
+        Return: Send + 'static,
+        Func: IntoCatchallHandler<Params, Return, Func> + Send + 'static,
+        CatchallFunctionHandler<Params, Return, Func>: Handler<Settings>,
+    {
+        let catchall_handler = catchall.into_catchall_handler();
+
+        let boxed_handler: Box<dyn Handler<Settings> + Send> = Box::new(catchall_handler); 
+        self.catchall = Some(boxed_handler);
 
         self
     }
@@ -110,6 +127,10 @@ impl<Settings> Consumer<Settings> {
             let settings = settings.clone();
 
             handler.call(message_data, pool.clone(), settings);
+        }
+
+        if let Some(catchall) = self.catchall.as_mut() {
+            catchall.call(message_data, pool, settings);
         }
     }
 
@@ -185,8 +206,11 @@ where
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
                 let handlers = self.handlers.drain(..).collect::<Vec<_>>();
+                let catchall = self.catchall.take();
+
                 let consumer = Consumer {
                     handlers,
+                    catchall,
                     identifier: self.identifier.clone(),
                     correlation: self.correlation.clone(),
                     position_update_interval: self.position_update_interval.clone(),
