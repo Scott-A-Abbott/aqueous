@@ -1,10 +1,10 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
 use tokio::{
     sync::mpsc::{channel, Sender},
     time::{interval, Duration, Interval, MissedTickBehavior},
 };
-use std::marker::PhantomData;
 
 pub struct Consumer<Executor, Settings> {
     handlers: Vec<Box<dyn Handler<Executor, Settings> + Send>>,

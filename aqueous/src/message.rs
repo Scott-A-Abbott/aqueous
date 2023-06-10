@@ -1,7 +1,10 @@
 use crate::StreamName;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::{error::Error, ops::{Deref, DerefMut}};
+use std::{
+    error::Error,
+    ops::{Deref, DerefMut},
+};
 use time::PrimitiveDateTime;
 
 #[derive(sqlx::FromRow, Debug, Clone)]
