@@ -56,22 +56,22 @@ pub trait Func<Params, Return> {}
 #[rustfmt::skip]
 macro_rules! all_function_tuples {
     ($macro_name:ident) => {
-        $macro_name!((T1, R1, F1));
-        $macro_name!((T1, R1, F1), (T2, R2, F2));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7), (T8, R8, F8));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7), (T8, R8, F8), (T9, R9, F9));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7), (T8, R8, F8), (T9, R9, F9), (T10, R10, F10));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7), (T8, R8, F8), (T9, R9, F9), (T10, R10, F10), (T11, R11, F11));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7), (T8, R8, F8), (T9, R9, F9), (T10, R10, F10), (T11, R11, F11), (T12, R12, F12));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7), (T8, R8, F8), (T9, R9, F9), (T10, R10, F10), (T11, R11, F11), (T12, R12, F12), (T13, R13, F13));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7), (T8, R8, F8), (T9, R9, F9), (T10, R10, F10), (T11, R11, F11), (T12, R12, F12), (T13, R13, F13), (T14, R14, F14));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7), (T8, R8, F8), (T9, R9, F9), (T10, R10, F10), (T11, R11, F11), (T12, R12, F12), (T13, R13, F13), (T14, R14, F14), (T15, R15, F15));
-        $macro_name!((T1, R1, F1), (T2, R2, F2), (T3, R3, F3), (T4, R4, F4), (T5, R5, F5), (T6, R6, F6), (T7, R7, F7), (T8, R8, F8), (T9, R9, F9), (T10, R10, F10), (T11, R11, F11), (T12, R12, F12), (T13, R13, F13), (T14, R14, F14), (T15, R15, F15), (T16, R16, F16));
+        $macro_name!((P1, R1, F1));
+        $macro_name!((P1, R1, F1), (P2, R2, F2));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7), (P8, R8, F8));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7), (P8, R8, F8), (P9, R9, F9));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7), (P8, R8, F8), (P9, R9, F9), (P10, R10, F10));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7), (P8, R8, F8), (P9, R9, F9), (P10, R10, F10), (P11, R11, F11));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7), (P8, R8, F8), (P9, R9, F9), (P10, R10, F10), (P11, R11, F11), (P12, R12, F12));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7), (P8, R8, F8), (P9, R9, F9), (P10, R10, F10), (P11, R11, F11), (P12, R12, F12), (P13, R13, F13));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7), (P8, R8, F8), (P9, R9, F9), (P10, R10, F10), (P11, R11, F11), (P12, R12, F12), (P13, R13, F13), (P14, R14, F14));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7), (P8, R8, F8), (P9, R9, F9), (P10, R10, F10), (P11, R11, F11), (P12, R12, F12), (P13, R13, F13), (P14, R14, F14), (P15, R15, F15));
+        $macro_name!((P1, R1, F1), (P2, R2, F2), (P3, R3, F3), (P4, R4, F4), (P5, R5, F5), (P6, R6, F6), (P7, R7, F7), (P8, R8, F8), (P9, R9, F9), (P10, R10, F10), (P11, R11, F11), (P12, R12, F12), (P13, R13, F13), (P14, R14, F14), (P15, R15, F15), (P16, R16, F16));
     };
 }
 
