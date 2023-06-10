@@ -7,7 +7,7 @@ pub struct Component<Settings = ()> {
 
 impl<S> Default for Component<S>
 where
-    S: Default,
+    S: Default
 {
     fn default() -> Self {
         Self {
@@ -17,7 +17,15 @@ where
     }
 }
 
+
 impl<S> Component<S> {
+    pub fn new(settings: S) -> Self {
+        Self {
+            consumers: Vec::new(),
+            settings,
+        }
+    }
+
     pub fn add_consumer<C>(mut self, consumer: C) -> Self
     where
         C: Start<S> + Send + 'static,
