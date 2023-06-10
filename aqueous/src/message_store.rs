@@ -27,7 +27,7 @@ impl GetStreamVersion {
 
         let version = match stream_version {
             Some(version) => Version(version),
-            None => Version::default(),
+            None => Version::initial(),
         };
 
         Ok(version)

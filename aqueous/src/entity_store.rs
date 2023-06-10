@@ -16,11 +16,6 @@ impl Version {
         Self(-1)
     }
 }
-impl Default for Version {
-    fn default() -> Self {
-        Version::initial()
-    }
-}
 
 pub struct EntityStore<Entity> {
     projections: Vec<Box<dyn Projection<Entity> + Send>>,
@@ -63,7 +58,7 @@ where
         let (mut entity, mut version) = self
             .cache
             .get_with(stream_name.0.clone(), async {
-                (Entity::default(), Version::default())
+                (Entity::default(), Version::initial())
             })
             .await;
 
