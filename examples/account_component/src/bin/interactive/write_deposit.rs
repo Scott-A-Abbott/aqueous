@@ -23,10 +23,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .and_then(|arg| i64::from_str(&arg).ok())
         .unwrap_or(10);
 
+    let deposit_id = args
+        .pop_front()
+        .and_then(|arg| Uuid::from_str(&arg).ok())
+        .unwrap_or_else(|| Uuid::new_v4());
+
     let deposit = Deposit {
         account_id,
         amount,
-        deposit_id: Uuid::new_v4(),
+        deposit_id,
         time: OffsetDateTime::now_utc(),
     };
 
