@@ -9,9 +9,6 @@ use tokio::{
 
 pub struct Consumer<Settings = ()> {
     handlers: Vec<Box<dyn Handler<Settings> + Send>>,
-    catchall: Option<Box<dyn Handler<Settings> + Send>>,
-    identifier: Option<CategoryType>,
-    correlation: Option<String>,
     position_update_interval: u64,
     position_update_counter: u64,
     batch_size: i64,
@@ -19,6 +16,10 @@ pub struct Consumer<Settings = ()> {
     strict: bool,
     settings_marker: PhantomData<Settings>,
     category: Category,
+    catchall: Option<Box<dyn Handler<Settings> + Send>>,
+    identifier: Option<CategoryType>,
+    correlation: Option<String>,
+    group: Option<(i64, i64)>,
 }
 
 impl<Settings> Consumer<Settings> {
@@ -27,17 +28,18 @@ impl<Settings> Consumer<Settings> {
         Settings: Default,
     {
         Self {
+            category,
             handlers: Vec::new(),
-            catchall: None,
-            identifier: None,
-            correlation: None,
             position_update_interval: 100,
             position_update_counter: 0,
             batch_size: 1000,
             poll_interval_millis: 100,
             strict: false,
             settings_marker: Default::default(),
-            category,
+            catchall: None,
+            identifier: None,
+            correlation: None,
+            group: None,
         }
     }
 
@@ -112,6 +114,11 @@ impl<Settings> Consumer<Settings> {
         self
     }
 
+    pub fn group(mut self, size: i64, member: i64) -> Self {
+        self.group = Some((size, member));
+        self
+    }
+
     pub fn position_stream_name(&self) -> StreamName {
         let position_type = CategoryType::new("position");
         let mut category = self.category.add_type(position_type);
@@ -162,6 +169,10 @@ impl<Settings> Consumer<Settings> {
 
         if let Some(position) = self.get_position(pool.clone()).await {
             get.position(position);
+        }
+
+        if let Some((size, member)) = self.group {
+            get.consumer_group_size(size).consumer_group_member(member);
         }
 
         get.batch_size(self.batch_size);
@@ -225,16 +236,17 @@ where
 
                 let consumer = Consumer {
                     handlers,
-                    catchall: self.catchall.take(),
-                    identifier: self.identifier.take(),
-                    correlation: self.correlation.take(),
                     position_update_interval: self.position_update_interval,
                     position_update_counter: self.position_update_counter,
                     batch_size: self.batch_size,
                     poll_interval_millis: self.poll_interval_millis,
                     strict: self.strict,
-                    settings_marker: Default::default(),
+                    settings_marker: self.settings_marker,
                     category: self.category.clone(),
+                    catchall: self.catchall.take(),
+                    identifier: self.identifier.take(),
+                    correlation: self.correlation.take(),
+                    group: self.group.take(),
                 };
                 Consumer::start(consumer, pool, settings).await;
             })
