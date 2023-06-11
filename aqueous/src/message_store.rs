@@ -1,6 +1,38 @@
 use crate::*;
+use sqlx::Error as SqlxError;
 use sqlx::{types::Json, PgPool};
-use std::error::Error;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum MessageStoreError {
+    #[error("{0}")]
+    WrongExpectedVersion(String),
+    #[error("{0}")]
+    Database(String),
+    #[error("{0}")]
+    Pool(String),
+    #[error(transparent)]
+    Other(SqlxError),
+}
+
+impl From<SqlxError> for MessageStoreError {
+    fn from(sqlx_error: SqlxError) -> Self {
+        match sqlx_error {
+            SqlxError::Database(ref error) => {
+                let message = error.message();
+                if message.contains("Wrong expected version") {
+                    return Self::WrongExpectedVersion(message.to_string());
+                }
+
+                Self::Database(format!("{}", sqlx_error))
+            }
+            SqlxError::PoolClosed | SqlxError::PoolTimedOut => {
+                Self::Pool(format!("{}", sqlx_error))
+            }
+            _ => Self::Other(sqlx_error),
+        }
+    }
+}
 
 pub struct GetStreamVersion {
     pool: PgPool,
@@ -11,7 +43,7 @@ impl GetStreamVersion {
         Self { pool }
     }
 
-    pub async fn execute(&self, stream_name: StreamName) -> Result<Version, Box<dyn Error>> {
+    pub async fn execute(&self, stream_name: StreamName) -> Result<Version, MessageStoreError> {
         let StreamName(stream_name) = stream_name;
 
         #[derive(sqlx::FromRow)]
@@ -61,7 +93,7 @@ impl GetLastStreamMessage {
     pub async fn execute(
         &mut self,
         stream_name: StreamName,
-    ) -> Result<Option<MessageData>, Box<dyn Error>> {
+    ) -> Result<Option<MessageData>, MessageStoreError> {
         let StreamName(stream_name) = stream_name;
 
         sqlx::query_as("SELECT * from get_last_stream_message($1::varchar, $2::varchar);")
@@ -114,7 +146,7 @@ impl GetStreamMessages {
     pub async fn execute(
         &mut self,
         stream_name: StreamName,
-    ) -> Result<Vec<MessageData>, Box<dyn Error>> {
+    ) -> Result<Vec<MessageData>, MessageStoreError> {
         let StreamName(stream_name) = stream_name;
 
         sqlx::query_as(
@@ -189,7 +221,7 @@ impl GetCategoryMessages {
         self
     }
 
-    pub async fn execute(&self, category: Category) -> Result<Vec<MessageData>, Box<dyn Error>> {
+    pub async fn execute(&self, category: Category) -> Result<Vec<MessageData>, MessageStoreError> {
         let Category(category) = category;
 
         sqlx::query_as(
@@ -274,7 +306,7 @@ impl WriteMessages {
         self
     }
 
-    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, Box<dyn Error>> {
+    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, MessageStoreError> {
         #[derive(sqlx::FromRow)]
         struct LastPosition(i64);
 
@@ -308,10 +340,6 @@ impl WriteMessages {
         transaction.commit().await?;
 
         let LastPosition(position) = last_position;
-
-        if position == -1 {
-            return Err("No messages were written".into());
-        }
 
         Ok(position)
     }

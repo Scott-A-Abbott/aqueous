@@ -4,7 +4,7 @@ use crate::{
     messages::{commands::*, events::*},
     AccountCategory, Store, TransactionCategory,
 };
-use aqueous::{Msg, StreamID, WriteMessages};
+use aqueous::{MessageStoreError, Msg, StreamID, WriteMessages};
 
 pub async fn handle_open(
     open: Msg<Open>,
@@ -41,11 +41,16 @@ pub async fn handle_deposit(
 
     let deposit: Msg<Deposit> = Msg::follow(deposit);
 
-    let _ = writer
+    let result = writer
         .with_message(deposit)
         .initial()
         .execute(stream_name)
         .await;
+
+    match result {
+        Ok(_) | Err(MessageStoreError::WrongExpectedVersion(_)) => return,
+        _ => result.unwrap(),
+    };
 }
 
 pub async fn handle_withdraw(
@@ -58,11 +63,16 @@ pub async fn handle_withdraw(
 
     let withdraw: Msg<Withdraw> = Msg::follow(withdraw);
 
-    let _ = writer
+    let result = writer
         .with_message(withdraw)
         .initial()
         .execute(stream_name)
         .await;
+
+    match result {
+        Ok(_) | Err(MessageStoreError::WrongExpectedVersion(_)) => return,
+        _ => result.unwrap(),
+    };
 }
 
 pub async fn handle_close(
