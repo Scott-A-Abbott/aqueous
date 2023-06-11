@@ -76,7 +76,7 @@ impl<Settings> Consumer<Settings> {
     {
         let catchall_handler = catchall.into_catchall_handler();
 
-        let boxed_handler: Box<dyn Handler<Settings> + Send> = Box::new(catchall_handler); 
+        let boxed_handler: Box<dyn Handler<Settings> + Send> = Box::new(catchall_handler);
         self.catchall = Some(boxed_handler);
 
         self
@@ -135,10 +135,10 @@ impl<Settings> Consumer<Settings> {
             let message_data = message_data.clone();
             let settings = settings.clone();
 
-           let was_processed = handler.call(message_data, pool.clone(), settings);
-           if was_processed {
-               processed_message = was_processed;
-           }
+            let was_processed = handler.call(message_data, pool.clone(), settings);
+            if was_processed {
+                processed_message = was_processed;
+            }
         }
 
         if let Some(catchall) = self.catchall.as_mut() {

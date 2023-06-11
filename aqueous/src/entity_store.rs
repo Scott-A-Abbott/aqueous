@@ -72,8 +72,13 @@ where
         self
     }
 
-    pub fn add_projections<M>(&mut self, collection: impl IntoProjectionCollection<Entity, M>) -> &mut Self {
-        let ProjectionCollection { mut projections, .. } = collection.into_projection_collection();
+    pub fn add_projections<M>(
+        &mut self,
+        collection: impl IntoProjectionCollection<Entity, M>,
+    ) -> &mut Self {
+        let ProjectionCollection {
+            mut projections, ..
+        } = collection.into_projection_collection();
         self.projections.append(&mut projections);
 
         self
@@ -176,10 +181,16 @@ pub trait IntoProjectionCollection<Entity, Marker> {
 impl<Entity, M, F> IntoProjectionCollection<Entity, (&'static mut Entity, Msg<M>)> for F
 where
     Entity: Send,
-    F: Fn(&mut Entity, Msg<M>) + IntoProjection<(&'static mut Entity, Msg<M>)> + Send + Sized + 'static,
+    F: Fn(&mut Entity, Msg<M>)
+        + IntoProjection<(&'static mut Entity, Msg<M>)>
+        + Send
+        + Sized
+        + 'static,
     for<'de> M: Message + serde::Deserialize<'de> + Send + 'static,
 {
-    fn into_projection_collection(self) -> ProjectionCollection<Entity, (&'static mut Entity, Msg<M>)> {
+    fn into_projection_collection(
+        self,
+    ) -> ProjectionCollection<Entity, (&'static mut Entity, Msg<M>)> {
         let projection = self.into_projection();
         let boxed_projection: Box<dyn Projection<Entity> + Send> = Box::new(projection);
 
