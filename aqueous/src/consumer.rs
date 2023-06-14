@@ -143,9 +143,7 @@ impl<Settings> Consumer<Settings> {
             let settings = settings.clone();
 
             let was_processed = handler.call(message_data, pool.clone(), settings);
-            if was_processed {
-                processed_message = was_processed;
-            }
+            processed_message = processed_message || was_processed;
         }
 
         if let Some(catchall) = self.catchall.as_mut() {
