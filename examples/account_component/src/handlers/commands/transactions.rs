@@ -3,7 +3,9 @@ use crate::{
     AccountCategory, Store,
 };
 use aqueous::{Msg, StreamID, WriteMessages};
+use tracing::{info, instrument};
 
+#[instrument(skip_all, target = "account_component")]
 pub async fn handle_deposit(
     deposit: Msg<Deposit>,
     Store(mut store): Store,
@@ -20,7 +22,11 @@ pub async fn handle_deposit(
         .unwrap();
 
     if account.has_processed(sequence) {
-        // ## Add logging
+        info!(
+            target: "ignored",
+            "Command ignored (Command: {}, Account ID: {}, Account Sequence: {}, Deposit Sequence: {})",
+            deposit.message_type(), account.id, account.sequence, sequence
+        );
         return;
     }
 
@@ -37,6 +43,7 @@ pub async fn handle_deposit(
         .unwrap();
 }
 
+#[instrument(skip_all, target = "account_component")]
 pub async fn handle_withdraw(
     withdraw: Msg<Withdraw>,
     Store(mut store): Store,
@@ -53,7 +60,11 @@ pub async fn handle_withdraw(
         .unwrap();
 
     if account.has_processed(sequence) {
-        // ## Add logging
+        info!(
+            target: "ignored",
+            "Command ignored (Command: {}, Account ID: {}, Account Sequence: {}, Deposit Sequence: {})",
+            withdraw.message_type(), account.id, account.sequence, sequence
+        );
         return;
     }
 

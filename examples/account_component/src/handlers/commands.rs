@@ -5,7 +5,9 @@ use crate::{
     AccountCategory, Store, TransactionCategory,
 };
 use aqueous::{MessageStoreError, Msg, StreamID, WriteMessages};
+use tracing::{info, instrument};
 
+#[instrument(skip_all, target = "account_component")]
 pub async fn handle_open(
     open: Msg<Open>,
     Store(mut store): Store,
@@ -16,7 +18,11 @@ pub async fn handle_open(
     let (account, version) = store.fetch(stream_id.clone()).await;
 
     if account.was_opened() {
-        // ## Add logging
+        info!(
+            target: "ignored",
+            "Command ignored (Command: {}, Account ID: {}, Customer ID: {})",
+            open.message_type(), account.id, open.customer_id
+        );
         return;
     }
 
@@ -75,6 +81,7 @@ pub async fn handle_withdraw(
     };
 }
 
+#[instrument(skip_all, target = "account_component")]
 pub async fn handle_close(
     close: Msg<Close>,
     Store(mut store): Store,
@@ -85,7 +92,11 @@ pub async fn handle_close(
     let (account, version) = store.fetch(stream_id.clone()).await;
 
     if account.was_closed() {
-        // ## Add logging
+        info!(
+            target: "ignored",
+            "Command ignored (Command: {}, Account ID: {})",
+            close.message_type(), account.id
+        );
         return;
     }
 
