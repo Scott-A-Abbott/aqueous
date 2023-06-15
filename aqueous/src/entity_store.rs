@@ -3,17 +3,24 @@ use moka::future::Cache;
 use sqlx::PgPool;
 use std::{
     any::{Any, TypeId},
+    fmt::{Display, Formatter},
     marker::PhantomData,
     sync::{Arc, OnceLock},
 };
 
 static ENTITY_CACHE: OnceLock<Cache<TypeId, Arc<Box<dyn Any + Send + Sync>>>> = OnceLock::new();
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Debug, Clone, Eq, PartialEq)]
 pub struct Version(pub i64);
 impl Version {
     pub fn initial() -> Self {
         Self(-1)
+    }
+}
+
+impl Display for Version {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
