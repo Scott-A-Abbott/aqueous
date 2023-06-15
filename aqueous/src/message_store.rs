@@ -1,7 +1,8 @@
 use crate::*;
-use sqlx::Error as SqlxError;
 use sqlx::{types::Json, PgPool};
+use sqlx::{Error as SqlxError, Execute};
 use thiserror::Error;
+use tracing::{debug, instrument, trace};
 
 #[derive(Error, Debug)]
 pub enum MessageStoreError {
@@ -43,6 +44,7 @@ impl GetStreamVersion {
         Self { pool }
     }
 
+    #[instrument(name = "GetStreamVersion::execute", skip(self), fields(%stream_name))]
     pub async fn execute(&self, stream_name: StreamName) -> Result<Version, MessageStoreError> {
         let StreamName(stream_name) = stream_name;
 
@@ -51,16 +53,15 @@ impl GetStreamVersion {
             stream_version: Option<i64>,
         }
 
-        let StreamVersion { stream_version } =
-            sqlx::query_as("SELECT * FROM stream_version($1::varchar)")
-                .bind(stream_name)
-                .fetch_one(&self.pool)
-                .await?;
+        let query =
+            sqlx::query_as("SELECT * FROM stream_version($1::varchar)").bind(stream_name.clone());
 
-        let version = match stream_version {
-            Some(version) => Version(version),
-            None => Version::initial(),
-        };
+        trace!("{} [{}]", query.sql(), stream_name);
+
+        let StreamVersion { stream_version } = query.fetch_one(&self.pool).await?;
+
+        let version = stream_version.map_or(Version::initial(), |v| Version(v));
+        debug!("Version of stream {} is {}", stream_name, version);
 
         Ok(version)
     }
@@ -90,18 +91,21 @@ impl GetLastStreamMessage {
         self
     }
 
+    #[instrument(name = "GetLastStreamMessage::execute", skip(self), fields(%stream_name))]
     pub async fn execute(
         &mut self,
         stream_name: StreamName,
     ) -> Result<Option<MessageData>, MessageStoreError> {
         let StreamName(stream_name) = stream_name;
 
-        sqlx::query_as("SELECT * from get_last_stream_message($1::varchar, $2::varchar);")
-            .bind(stream_name)
-            .bind(&self.message_type)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| e.into())
+        let query =
+            sqlx::query_as("SELECT * from get_last_stream_message($1::varchar, $2::varchar);")
+                .bind(stream_name.clone())
+                .bind(&self.message_type);
+
+        trace!("{} [{}, {:?}]", query.sql(), stream_name, self.message_type);
+
+        query.fetch_optional(&self.pool).await.map_err(|e| e.into())
     }
 }
 
@@ -143,22 +147,32 @@ impl GetStreamMessages {
         self
     }
 
+    #[instrument(name = "GetStreamMessages::execute", skip(self), fields(%stream_name))]
     pub async fn execute(
         &mut self,
         stream_name: StreamName,
     ) -> Result<Vec<MessageData>, MessageStoreError> {
         let StreamName(stream_name) = stream_name;
+        let position = self.position.unwrap_or_else(|| 0);
+        let batch_size = self.batch_size.unwrap_or_else(|| 1000);
 
-        sqlx::query_as(
+        let query = sqlx::query_as(
             "SELECT * from get_stream_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar);",
         )
-        .bind(stream_name)
-        .bind(self.position.unwrap_or_else(|| 0))
-        .bind(self.batch_size.unwrap_or_else(|| 1000))
-        .bind(&self.condition)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| e.into())
+        .bind(stream_name.clone())
+        .bind(position)
+        .bind(batch_size)
+        .bind(&self.condition);
+
+        trace!(
+            "{} [{}, {}, {:?}]",
+            query.sql(),
+            stream_name,
+            position,
+            batch_size
+        );
+
+        query.fetch_all(&self.pool).await.map_err(|e| e.into())
     }
 }
 
@@ -221,22 +235,36 @@ impl GetCategoryMessages {
         self
     }
 
+    #[instrument(name = "GetCategoryMessages::execute", skip(self), fields(%category))]
     pub async fn execute(&self, category: Category) -> Result<Vec<MessageData>, MessageStoreError> {
         let Category(category) = category;
+        let position = self.position.unwrap_or_else(|| 0);
+        let batch_size = self.batch_size.unwrap_or_else(|| 1000);
 
-        sqlx::query_as(
+        let query = sqlx::query_as(
             "SELECT * FROM get_category_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar, $5::bigint, $6::bigint, $7::varchar);",
         )
-        .bind(category)
-        .bind(self.position.unwrap_or_else(|| 0))
-        .bind(self.batch_size.unwrap_or_else(|| 1000))
+        .bind(category.clone())
+        .bind(position)
+        .bind(batch_size)
         .bind(&self.correlation)
         .bind(&self.consumer_group_member)
         .bind(&self.consumer_group_size)
-        .bind(&self.condition)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| e.into())
+        .bind(&self.condition);
+
+        trace!(
+            "{} [{}, {}, {}, {:?}, {:?}, {:?}, {:?}]",
+            query.sql(),
+            category,
+            position,
+            batch_size,
+            self.correlation,
+            self.consumer_group_member,
+            self.consumer_group_size,
+            self.condition
+        );
+
+        query.fetch_all(&self.pool).await.map_err(|e| e.into())
     }
 }
 
@@ -252,7 +280,7 @@ pub struct WriteMessages {
     messages: Vec<WriteMessageData>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(Debug, serde::Serialize)]
 struct WriteMessageData {
     #[serde(rename = "type")]
     type_name: String,
@@ -285,9 +313,11 @@ impl WriteMessages {
     {
         let msg: Msg<T> = message.into();
 
+        let data = serde_json::to_string(&msg.data).unwrap();
+
         let message_data = WriteMessageData {
+            data,
             type_name: T::TYPE_NAME.to_owned(),
-            data: serde_json::to_string(&msg.data).unwrap(),
             metadata: msg.metadata.map(|metadata| Json(metadata)),
         };
 
@@ -295,6 +325,7 @@ impl WriteMessages {
         self
     }
 
+    #[instrument(name = "WriteMessages::execute", skip(self), fields(%stream_name))]
     pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, MessageStoreError> {
         #[derive(sqlx::FromRow)]
         struct LastPosition(i64);
@@ -308,17 +339,28 @@ impl WriteMessages {
             let id = uuid::Uuid::new_v4();
             let version = self.expected_version.as_ref().map(|Version(value)| value);
 
-            last_position = sqlx::query_as(
+            let query = sqlx::query_as(
                 "SELECT write_message($1::varchar, $2::varchar, $3::varchar, $4::jsonb, $5::jsonb, $6::bigint);",
             )
-                .bind(id)
-                .bind(stream_name)
+                .bind(id.clone())
+                .bind(stream_name.clone())
                 .bind(&message.type_name)
                 .bind(&message.data)
                 .bind(&message.metadata)
-                .bind(version)
-                .fetch_one(&mut *transaction)
-                .await?;
+                .bind(&version);
+
+            trace!(
+                "{} [{}, {}, {}, {}, {:?}, {:?}]",
+                query.sql(),
+                id,
+                stream_name,
+                message.type_name,
+                message.data,
+                message.metadata,
+                version
+            );
+
+            last_position = query.fetch_one(&mut *transaction).await?;
 
             self.expected_version = self
                 .expected_version
