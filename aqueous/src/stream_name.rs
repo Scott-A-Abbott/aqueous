@@ -1,4 +1,7 @@
-use std::collections::VecDeque;
+use std::{
+    collections::VecDeque,
+    fmt::{Display, Formatter},
+};
 
 pub mod separator {
     pub const ID: &'static str = "-";
@@ -6,7 +9,7 @@ pub mod separator {
     pub const COMPOUND: &'static str = "+";
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct StreamName(pub String);
 
 impl StreamName {
@@ -87,7 +90,13 @@ impl StreamName {
     }
 }
 
-#[derive(Clone)]
+impl Display for StreamName {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct StreamID(pub String);
 
 impl StreamID {
@@ -114,7 +123,13 @@ impl StreamID {
     }
 }
 
-#[derive(Clone)]
+impl Display for StreamID {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Category(pub String);
 
 impl Category {
@@ -194,7 +209,13 @@ impl Category {
     }
 }
 
-#[derive(Clone)]
+impl Display for Category {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct EntityID(pub String);
 
 impl EntityID {
@@ -203,7 +224,13 @@ impl EntityID {
     }
 }
 
-#[derive(Clone)]
+impl Display for EntityID {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct CategoryType(pub String);
 
 impl CategoryType {
@@ -228,5 +255,11 @@ impl CategoryType {
             .join(separator::COMPOUND);
 
         Self(joined_type)
+    }
+}
+
+impl Display for CategoryType {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
