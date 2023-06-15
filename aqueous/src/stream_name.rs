@@ -145,7 +145,9 @@ impl Category {
 
     pub fn split(&self) -> (EntityID, Option<CategoryType>) {
         let Self(category) = self;
-        let mut splits = category.split(separator::ID).collect::<VecDeque<_>>();
+        let mut splits = category
+            .split(separator::CATEGORY_TYPE)
+            .collect::<VecDeque<_>>();
         let entity_id = EntityID::new(splits.pop_front().expect("EntityID"));
 
         let category_type = if !splits.is_empty() {
