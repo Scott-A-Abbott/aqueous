@@ -38,7 +38,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     println!("Writing {:#?}", withdraw);
 
     WriteMessages::new(pool.clone())
-        .with_message(withdraw)
+        .add_message(withdraw)
         .execute(stream_name)
         .await?;
 

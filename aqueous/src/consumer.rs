@@ -200,7 +200,7 @@ impl<Settings> Consumer<Settings> {
         self.position_update_counter += 1;
 
         let mut write = WriteMessages::new(pool.clone());
-        write.with_message(Recorded { position });
+        write.add_message(Recorded { position });
 
         if self.position_update_counter >= self.position_update_interval {
             let stream_name = self.position_stream_name();

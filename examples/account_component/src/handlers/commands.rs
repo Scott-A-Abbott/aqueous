@@ -24,7 +24,7 @@ pub async fn handle_open(
     let stream_name = category.stream_name(stream_id);
 
     writer
-        .with_message(opened)
+        .add_message(opened)
         .expected_version(version)
         .execute(stream_name)
         .await
@@ -42,7 +42,7 @@ pub async fn handle_deposit(
     let deposit: Msg<Deposit> = Msg::follow(deposit);
 
     let result = writer
-        .with_message(deposit)
+        .add_message(deposit)
         .initial()
         .execute(stream_name)
         .await;
@@ -64,7 +64,7 @@ pub async fn handle_withdraw(
     let withdraw: Msg<Withdraw> = Msg::follow(withdraw);
 
     let result = writer
-        .with_message(withdraw)
+        .add_message(withdraw)
         .initial()
         .execute(stream_name)
         .await;
@@ -93,7 +93,7 @@ pub async fn handle_close(
     let stream_name = category.stream_name(stream_id);
 
     writer
-        .with_message(closed)
+        .add_message(closed)
         .expected_version(version)
         .execute(stream_name)
         .await

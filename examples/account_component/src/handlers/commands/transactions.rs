@@ -30,7 +30,7 @@ pub async fn handle_deposit(
     let stream_name = category.stream_name(stream_id);
 
     writer
-        .with_message(deposited)
+        .add_message(deposited)
         .expected_version(version)
         .execute(stream_name)
         .await
@@ -64,7 +64,7 @@ pub async fn handle_withdraw(
         withdrawal_rejected.sequence = sequence;
 
         writer
-            .with_message(withdrawal_rejected)
+            .add_message(withdrawal_rejected)
             .expected_version(version)
             .execute(stream_name)
             .await
@@ -77,7 +77,7 @@ pub async fn handle_withdraw(
     withdrawn.sequence = sequence;
 
     writer
-        .with_message(withdrawn)
+        .add_message(withdrawn)
         .expected_version(version)
         .execute(stream_name)
         .await

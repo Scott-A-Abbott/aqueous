@@ -279,7 +279,7 @@ impl WriteMessages {
         self
     }
 
-    pub fn with_message<T>(&mut self, message: impl Into<Msg<T>>) -> &mut Self
+    pub fn add_message<T>(&mut self, message: impl Into<Msg<T>>) -> &mut Self
     where
         T: serde::Serialize + Message,
     {

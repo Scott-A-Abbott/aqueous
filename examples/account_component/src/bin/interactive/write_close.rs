@@ -31,7 +31,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     println!("Writing {:#?}", close);
 
     WriteMessages::new(pool.clone())
-        .with_message(close)
+        .add_message(close)
         .execute(stream_name)
         .await?;
 
