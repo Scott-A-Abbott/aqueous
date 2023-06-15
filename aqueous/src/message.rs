@@ -223,6 +223,10 @@ where
 
         Self { data, metadata }
     }
+
+    pub fn message_type(&self) -> &str {
+        T::TYPE_NAME
+    }
 }
 
 impl<T> From<T> for Msg<T>
