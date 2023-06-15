@@ -295,17 +295,6 @@ impl WriteMessages {
         self
     }
 
-    pub fn with_batch<T>(&mut self, batch: impl AsRef<[T]>) -> &mut Self
-    where
-        T: serde::Serialize + Message + Clone + Into<Msg<T>>,
-    {
-        for message in batch.as_ref().iter() {
-            self.with_message(message.clone());
-        }
-
-        self
-    }
-
     pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, MessageStoreError> {
         #[derive(sqlx::FromRow)]
         struct LastPosition(i64);
