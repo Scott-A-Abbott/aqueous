@@ -3,10 +3,12 @@ use moka::future::Cache;
 use sqlx::PgPool;
 use std::{
     any::{Any, TypeId},
+    collections::HashMap,
     fmt::{Display, Formatter},
     marker::PhantomData,
     sync::{Arc, OnceLock},
 };
+use thiserror::Error;
 
 static ENTITY_CACHE: OnceLock<Cache<TypeId, Arc<Box<dyn Any + Send + Sync>>>> = OnceLock::new();
 
@@ -24,8 +26,12 @@ impl Display for Version {
     }
 }
 
+#[derive(Error, Debug)]
+#[error("A projection that recieves {0} already exists")]
+pub struct DuplicateProjectionError(String);
+
 pub struct EntityStore<Entity> {
-    projections: Vec<Box<dyn Projection<Entity> + Send>>,
+    projections: HashMap<String, Box<dyn Projection<Entity> + Send>>,
     cache: Cache<StreamName, (Entity, Version)>,
     category: Category,
     pool: PgPool,
@@ -56,7 +62,7 @@ where
                     .unwrap();
 
                 Self {
-                    projections: Vec::new(),
+                    projections: HashMap::new(),
                     cache: cache.clone(),
                     category,
                     pool,
@@ -65,30 +71,44 @@ where
         })
     }
 
-    pub fn add_projection<F, M>(&mut self, func: F) -> &mut Self
+    pub fn insert_projection<F, M>(
+        &mut self,
+        func: F,
+    ) -> Result<&mut Self, DuplicateProjectionError>
     where
         for<'de> M: Message + Send + serde::Deserialize<'de> + 'static,
         F: Fn(&mut Entity, Msg<M>) + Send + 'static,
         Entity: 'static,
     {
+        let message_type = M::TYPE_NAME.to_string();
+
+        if self.projections.contains_key(&message_type) {
+            return Err(DuplicateProjectionError(message_type));
+        }
+
         let projection = IntoProjection::into_projection(func);
         let boxed_projection: Box<dyn Projection<Entity> + Send> = Box::new(projection);
 
-        self.projections.push(boxed_projection);
+        self.projections.insert(message_type, boxed_projection);
 
-        self
+        Ok(self)
     }
 
-    pub fn add_projections<M>(
+    pub fn extend_projections<M>(
         &mut self,
         collection: impl IntoProjectionCollection<Entity, M>,
-    ) -> &mut Self {
-        let ProjectionCollection {
-            mut projections, ..
-        } = collection.into_projection_collection();
-        self.projections.append(&mut projections);
+    ) -> Result<&mut Self, DuplicateProjectionError> {
+        let ProjectionCollection { projections, .. } = collection.into_projection_collection();
 
-        self
+        for (message_type, projection) in projections.into_iter() {
+            if self.projections.contains_key(&message_type) {
+                return Err(DuplicateProjectionError(message_type));
+            }
+
+            self.projections.insert(message_type, projection);
+        }
+
+        Ok(self)
     }
 }
 
@@ -122,7 +142,7 @@ where
             .unwrap();
 
         for message in messages {
-            for projection in self.projections.iter() {
+            for projection in self.projections.values() {
                 projection.apply(&mut entity, message.clone());
             }
 
@@ -177,7 +197,7 @@ where
 }
 
 pub struct ProjectionCollection<Entity, Marker> {
-    projections: Vec<Box<dyn Projection<Entity> + Send>>,
+    projections: HashMap<String, Box<dyn Projection<Entity> + Send>>,
     marker: PhantomData<Marker>,
 }
 
@@ -199,10 +219,14 @@ where
         self,
     ) -> ProjectionCollection<Entity, (&'static mut Entity, Msg<M>)> {
         let projection = self.into_projection();
+        let message_type = M::TYPE_NAME.to_string();
         let boxed_projection: Box<dyn Projection<Entity> + Send> = Box::new(projection);
 
+        let mut projections = HashMap::new();
+        projections.insert(message_type, boxed_projection);
+
         ProjectionCollection {
-            projections: vec![boxed_projection],
+            projections,
             marker: Default::default(),
         }
     }
@@ -240,10 +264,10 @@ macro_rules! impl_into_projection_collection {
         {
             fn into_projection_collection(self) -> ProjectionCollection<Entity, ($((&'static mut Entity, Msg<$msg>),)*)> {
                 let ($($fn,)*) = self;
-                let mut projections = Vec::new();
+                let mut projections = HashMap::new();
 
-                $( let ProjectionCollection { projections: mut $fn, .. } = $fn.into_projection_collection(); )*
-                $( projections.append(&mut $fn); )*
+                $( let ProjectionCollection { projections: $fn, .. } = $fn.into_projection_collection(); )*
+                $( projections.extend($fn.into_iter()); )*
 
                 ProjectionCollection {
                     projections,
