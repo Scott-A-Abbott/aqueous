@@ -32,6 +32,7 @@ pub struct DuplicateProjectionError(String);
 
 pub struct EntityStore<Entity> {
     projections: HashMap<String, Box<dyn Projection<Entity> + Send>>,
+    catchall: Option<Box<dyn Projection<Entity> + Send>>,
     cache: Cache<StreamName, (Entity, Version)>,
     category: Category,
     pool: PgPool,
@@ -63,12 +64,23 @@ where
 
                 Self {
                     projections: HashMap::new(),
+                    catchall: None,
                     cache: cache.clone(),
                     category,
                     pool,
                 }
             })
         })
+    }
+
+    pub fn catchall<F>(&mut self, catchall: F) -> &mut Self
+    where
+        for<'e> F: Fn(&'e mut Entity, MessageData) + Send + 'static,
+    {
+        let boxed_projection: Box<dyn Projection<Entity> + Send> = Box::new(catchall);
+        self.catchall = Some(boxed_projection);
+
+        self
     }
 
     pub fn insert_projection<F, M>(
@@ -146,6 +158,10 @@ where
                 projection.apply(&mut entity, message.clone());
             }
 
+            if let Some(catchall) = self.catchall.as_ref() {
+                catchall.apply(&mut entity, message.clone());
+            }
+
             version.0 = message.position;
         }
 
@@ -159,6 +175,15 @@ where
 
 pub trait Projection<Entity> {
     fn apply(&self, entity: &mut Entity, message_data: MessageData);
+}
+
+impl<'e, Entity, F> Projection<Entity> for F
+where
+    F: Fn(&mut Entity, MessageData),
+{
+    fn apply(&self, entity: &mut Entity, message_data: MessageData) {
+        self(entity, message_data);
+    }
 }
 
 pub struct FunctionProjection<Marker, F> {
