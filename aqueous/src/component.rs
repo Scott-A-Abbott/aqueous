@@ -1,8 +1,9 @@
+use crate::Consumer;
 use sqlx::{postgres::PgConnectOptions, postgres::PgPoolOptions, PgPool};
 use tokio::task::JoinSet;
 
 pub struct Component<Settings = ()> {
-    consumers: Vec<Box<dyn Start<Settings> + Send>>,
+    consumers: Vec<Consumer<Settings>>,
     settings: Settings,
     connect_options: PgConnectOptions,
     pool_options: PgPoolOptions,
@@ -50,12 +51,8 @@ impl<S> Component<S> {
         self
     }
 
-    pub fn add_consumer<C>(mut self, consumer: C) -> Self
-    where
-        C: Start<S> + Send + 'static,
-    {
-        let boxed_consumer: Box<dyn Start<S> + Send> = Box::new(consumer);
-        self.consumers.push(boxed_consumer);
+    pub fn add_consumer(mut self, consumer: Consumer<S>) -> Self {
+        self.consumers.push(consumer);
         self
     }
 
@@ -77,9 +74,7 @@ impl<S> Component<S> {
             let settings = self.settings.clone();
             let pool = pool.clone();
 
-            set.spawn_blocking(move || {
-                consumer.start(pool, settings);
-            });
+            set.spawn(async move { consumer.start(pool, settings).await });
         }
 
         // ## Should the entire component exit at any panic? Or just the consumer thread?
@@ -91,8 +86,4 @@ impl<S> Component<S> {
 
         set.join_next().await;
     }
-}
-
-pub trait Start<S> {
-    fn start(&mut self, pool: PgPool, settings: S);
 }

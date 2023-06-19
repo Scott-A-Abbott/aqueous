@@ -242,19 +242,6 @@ impl<Settings> Consumer<Settings> {
     }
 }
 
-impl<S> Start<S> for Consumer<S>
-where
-    S: Clone,
-{
-    fn start(&mut self, pool: PgPool, settings: S) {
-        tokio::task::block_in_place(move || {
-            tokio::runtime::Handle::current().block_on(async move {
-                self.start(pool, settings).await;
-            })
-        });
-    }
-}
-
 pub struct Subscription {
     get: GetCategoryMessages,
     poll_interval: Interval,
