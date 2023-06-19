@@ -1,14 +1,19 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::marker::PhantomData;
+use std::{collections::HashMap, marker::PhantomData};
+use thiserror::Error;
 use tokio::{
     sync::mpsc::{channel, Sender},
     time::{interval, Duration, Interval, MissedTickBehavior},
 };
 
+#[derive(Error, Debug)]
+#[error("A handler that recieves {0} already exists")]
+pub struct DuplicateHandlerError(String);
+
 pub struct Consumer<Settings = ()> {
-    handlers: Vec<Box<dyn Handler<Settings> + Send>>,
+    handlers: HashMap<String, Box<dyn Handler<Settings> + Send>>,
     position_update_interval: u64,
     position_update_counter: u64,
     batch_size: i64,
@@ -29,7 +34,7 @@ impl<Settings> Consumer<Settings> {
     {
         Self {
             category,
-            handlers: Vec::new(),
+            handlers: HashMap::new(),
             position_update_interval: 100,
             position_update_counter: 0,
             batch_size: 1000,
@@ -43,30 +48,44 @@ impl<Settings> Consumer<Settings> {
         }
     }
 
-    pub fn add_handler<Params, Return, Func, H>(mut self, handler: H) -> Self
+    pub fn insert_handler<Params, Return, Func>(
+        mut self,
+        handler: Func,
+    ) -> Result<Self, DuplicateHandlerError>
     where
         Params: Send + 'static,
         Return: Send + 'static,
         Func: IntoHandler<Params, Return, Func> + Send + 'static,
-        H: IntoHandler<Params, Return, Func> + 'static,
         FunctionHandler<Params, Return, Func>: Handler<Settings>,
     {
         let handler: FunctionHandler<Params, Return, Func> = handler.into_handler();
+        let message_type = handler.message_type();
+
+        if self.handlers.contains_key(&message_type) {
+            return Err(DuplicateHandlerError(message_type));
+        }
 
         let boxed_handler: Box<dyn Handler<Settings> + Send> = Box::new(handler);
-        self.handlers.push(boxed_handler);
+        self.handlers.insert(message_type, boxed_handler);
 
-        self
+        Ok(self)
     }
 
     pub fn add_handlers<Params, Return>(
         mut self,
         handlers: impl IntoHandlerCollection<Params, Return, Settings>,
-    ) -> Self {
-        let HandlerCollection { mut handlers, .. } = handlers.into_handler_collection();
-        self.handlers.append(&mut handlers);
+    ) -> Result<Self, DuplicateHandlerError> {
+        let HandlerCollection { handlers, .. } = handlers.into_handler_collection();
 
-        self
+        for (message_type, handler) in handlers.into_iter() {
+            if self.handlers.contains_key(&message_type) {
+                return Err(DuplicateHandlerError(message_type));
+            }
+
+            self.handlers.insert(message_type, handler);
+        }
+
+        Ok(self)
     }
 
     pub fn catchall<Params, Return, Func>(mut self, catchall: Func) -> Self
@@ -138,7 +157,7 @@ impl<Settings> Consumer<Settings> {
     {
         let mut processed_message = false;
 
-        for handler in self.handlers.iter_mut() {
+        for handler in self.handlers.values_mut() {
             let message_data = message_data.clone();
             let settings = settings.clone();
 
@@ -230,7 +249,7 @@ where
     fn start(&mut self, pool: PgPool, settings: S) {
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
-                let handlers = self.handlers.drain(..).collect::<Vec<_>>();
+                let handlers = self.handlers.drain().collect();
 
                 let consumer = Consumer {
                     handlers,

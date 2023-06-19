@@ -1,6 +1,6 @@
 use crate::{Message, MessageData, Msg};
 use sqlx::PgPool;
-use std::{marker::PhantomData, ops::Deref};
+use std::{collections::HashMap, marker::PhantomData, ops::Deref};
 
 pub trait Handler<Settings = ()> {
     fn call(&mut self, message_data: MessageData, pool: PgPool, settings: Settings) -> bool;
@@ -14,6 +14,13 @@ pub struct FunctionHandler<Params, Return, F> {
     func: F,
     params_marker: PhantomData<Params>,
     return_marker: PhantomData<Return>,
+    message_type: String,
+}
+
+impl<P, R, F> FunctionHandler<P, R, F> {
+    pub fn message_type(&self) -> String {
+        self.message_type.clone()
+    }
 }
 
 pub trait IntoHandler<Params, Return, Func>: Sized {
@@ -31,7 +38,7 @@ pub trait IntoCatchallHandler<Params, Return, Func>: Sized {
 }
 
 pub struct HandlerCollection<Params, Return, Settings = ()> {
-    pub handlers: Vec<Box<dyn Handler<Settings> + Send>>,
+    pub handlers: HashMap<String, Box<dyn Handler<Settings> + Send>>,
     params_marker: PhantomData<Params>,
     return_marker: PhantomData<Return>,
 }
@@ -50,8 +57,11 @@ where
 {
     fn into_handler_collection(self) -> HandlerCollection<Params, Return, Settings> {
         let function_handler = self.into_handler();
+        let message_type = function_handler.message_type();
         let boxed_handler: Box<dyn Handler<Settings> + Send> = Box::new(function_handler);
-        let handlers = vec![boxed_handler];
+
+        let mut handlers = HashMap::new();
+        handlers.insert(message_type, boxed_handler);
 
         HandlerCollection {
             handlers,
@@ -94,10 +104,10 @@ macro_rules! impl_into_handler_collection {
         {
             fn into_handler_collection(self) -> HandlerCollection<($($param,)*), ($($re,)*), Settings> {
                 let ($($fn,)*) = self;
-                let mut handlers = Vec::new();
+                let mut handlers = HashMap::new();
 
-                $( let HandlerCollection { handlers: mut $fn, .. } = $fn.into_handler_collection(); )*
-                $( handlers.append(&mut $fn); )*
+                $( let HandlerCollection { handlers: $fn, .. } = $fn.into_handler_collection(); )*
+                $( handlers.extend($fn.into_iter()); )*
 
                 HandlerCollection {
                     handlers,
@@ -265,6 +275,7 @@ macro_rules! impl_into_handler {
                     func: self,
                     params_marker: Default::default(),
                     return_marker: Default::default(),
+                    message_type: Msg::TYPE_NAME.to_string(),
                 }
             }
         }
