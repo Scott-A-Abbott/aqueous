@@ -71,7 +71,7 @@ impl<Settings> Consumer<Settings> {
         Ok(self)
     }
 
-    pub fn add_handlers<Params, Return>(
+    pub fn extend_handlers<Params, Return>(
         mut self,
         handlers: impl IntoHandlerCollection<Params, Return, Settings>,
     ) -> Result<Self, DuplicateHandlerError> {
