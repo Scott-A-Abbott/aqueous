@@ -174,7 +174,7 @@ impl<Settings> Consumer<Settings> {
         }
     }
 
-    pub async fn start(mut self, pool: PgPool, settings: Settings)
+    pub async fn start(&mut self, pool: PgPool, settings: Settings)
     where
         Settings: Clone,
     {
@@ -249,23 +249,7 @@ where
     fn start(&mut self, pool: PgPool, settings: S) {
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
-                let handlers = self.handlers.drain().collect();
-
-                let consumer = Consumer {
-                    handlers,
-                    position_update_interval: self.position_update_interval,
-                    position_update_counter: self.position_update_counter,
-                    batch_size: self.batch_size,
-                    poll_interval_millis: self.poll_interval_millis,
-                    strict: self.strict,
-                    settings_marker: self.settings_marker,
-                    category: self.category.clone(),
-                    catchall: self.catchall.take(),
-                    identifier: self.identifier.take(),
-                    correlation: self.correlation.take(),
-                    group: self.group.take(),
-                };
-                Consumer::start(consumer, pool, settings).await;
+                self.start(pool, settings).await;
             })
         });
     }
