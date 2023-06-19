@@ -2,5 +2,11 @@
 - Aqueous
   - Improve error handling
   - Add small scale feature examples
+  - Projection needs a catchall
+  - Handler and projection structs backed with a HashMap
+    - The handler struct would need to contain the message type name
+      - Catchall needs a hard coded string like "All"
+    - The `add_*` functions should be renamed to `insert_*` and return a result
+      - Errors when attempting to insert a function that works on a message type already handled
 - Add a funds transfer component
 - Logging in all the places
