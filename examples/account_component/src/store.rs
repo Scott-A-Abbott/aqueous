@@ -8,13 +8,15 @@ impl HandlerParam for Store {
         let AccountCategory(category) = AccountCategory::new();
         let mut store = EntityStore::build(pool, category);
 
-        store.add_projections((
-            apply_opened,
-            apply_deposited,
-            apply_withdrawn,
-            apply_withdrawal_rejected,
-            apply_closed,
-        ));
+        store
+            .extend_projections((
+                apply_opened,
+                apply_deposited,
+                apply_withdrawn,
+                apply_withdrawal_rejected,
+                apply_closed,
+            ))
+            .unwrap();
 
         Self(store)
     }

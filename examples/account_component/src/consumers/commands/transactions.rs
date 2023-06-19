@@ -7,6 +7,8 @@ impl TransactionsConsumer {
     pub fn build() -> Consumer {
         let TransactionCategory(category) = crate::TransactionCategory::new();
 
-        Consumer::new(category).add_handlers((handle_deposit, handle_withdraw))
+        Consumer::new(category)
+            .extend_handlers((handle_deposit, handle_withdraw))
+            .unwrap()
     }
 }
