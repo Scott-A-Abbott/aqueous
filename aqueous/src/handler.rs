@@ -149,20 +149,6 @@ macro_rules! impl_func {
     }
 }
 
-macro_rules! impl_into_handler_self {
-    ([$($ty:ident $(,)?)*], $re:ident) => {
-        #[allow(non_snake_case)]
-        impl<Func, $($ty,)* $re> IntoHandler<($($ty,)*), $re, Func> for FunctionHandler<($($ty,)*), $re, Func>
-        where
-            Func: Fn($($ty,)*) -> $re,
-        {
-            fn into_handler(self) -> Self {
-                self
-            }
-        }
-    }
-}
-
 macro_rules! impl_into_catchall {
     ([$($ty:ident $(,)?)*], $re:ident) => {
         impl<Func, $($ty,)* $re> IntoCatchallHandler<(MessageData, $($ty,)*), $re, Func> for Func
@@ -207,7 +193,6 @@ impl_handler_for_catchall!([], R);
 
 function_params!(impl_into_catchall);
 function_params!(impl_handler_for_catchall);
-function_params!(impl_into_handler_self);
 function_params!(impl_func);
 
 #[rustfmt::skip]
