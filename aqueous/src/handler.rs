@@ -52,7 +52,7 @@ where
     Params: Send + 'static,
     Settings: Send + 'static,
     Return: std::future::Future<Output = ()> + Send + 'static,
-    F: Func<Params, Return> + IntoHandler<Params, Return, F> + Send + 'static,
+    F: IntoHandler<Params, Return, F> + Send + 'static,
     FunctionHandler<Params, Return, F>: Handler<Settings>,
 {
     fn into_handler_collection(self) -> HandlerCollection<Params, Return, Settings> {
@@ -70,8 +70,6 @@ where
         }
     }
 }
-
-pub trait Func<Params, Return> {}
 
 #[rustfmt::skip]
 macro_rules! all_function_tuples {
@@ -143,12 +141,6 @@ macro_rules! function_params {
     };
 }
 
-macro_rules! impl_func {
-    ([$($ty:ident $(,)?)*], $re:ident) => {
-        impl<F, $($ty,)* $re> Func<($($ty,)*), $re> for F where F: Fn($($ty,)*) -> $re {}
-    }
-}
-
 macro_rules! impl_into_catchall {
     ([$($ty:ident $(,)?)*], $re:ident) => {
         impl<Func, $($ty,)* $re> IntoCatchallHandler<(MessageData, $($ty,)*), $re, Func> for Func
@@ -193,7 +185,6 @@ impl_handler_for_catchall!([], R);
 
 function_params!(impl_into_catchall);
 function_params!(impl_handler_for_catchall);
-function_params!(impl_func);
 
 #[rustfmt::skip]
 macro_rules! function_params_with_first {
