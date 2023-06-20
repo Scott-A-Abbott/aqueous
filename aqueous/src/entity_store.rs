@@ -4,11 +4,13 @@ use sqlx::PgPool;
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
+    fmt::Debug,
     fmt::{Display, Formatter},
     marker::PhantomData,
     sync::{Arc, OnceLock},
 };
 use thiserror::Error;
+use tracing::{debug, instrument, trace};
 
 static ENTITY_CACHE: OnceLock<Cache<TypeId, Arc<Box<dyn Any + Send + Sync>>>> = OnceLock::new();
 
@@ -126,10 +128,15 @@ where
 
 impl<Entity> EntityStore<Entity>
 where
-    Entity: Default + Clone + Send + Sync + 'static,
+    Entity: Default + Debug + Clone + Send + Sync + 'static,
 {
-    pub async fn fetch(&mut self, stream_id: StreamID) -> (Entity, Version) {
+    #[instrument(skip_all, name = "EntityStore::fetch")]
+    pub async fn fetch(
+        &mut self,
+        stream_id: StreamID,
+    ) -> Result<(Entity, Version), MessageStoreError> {
         let stream_name = self.category.stream_name(stream_id);
+        debug!("Stream name: {}", stream_name);
 
         let (mut entity, mut version) = self
             .cache
@@ -138,38 +145,44 @@ where
             })
             .await;
 
+        debug!("Cached entity at version {}: {:?}", version, entity);
+
         let current_version = GetStreamVersion::new(self.pool.clone())
             .execute(stream_name.clone())
-            .await
-            .unwrap();
+            .await?;
 
         if version == current_version {
-            return (entity, version);
+            debug!("Cached entity returned");
+            return Ok((entity, version));
         }
 
         let messages = GetStreamMessages::new(self.pool.clone())
             .position(version.0 + 1)
             .execute(stream_name.clone())
-            .await
-            .unwrap();
+            .await?;
+
+        trace!("Messages: {:?}", messages);
 
         for message in messages {
+            let position = message.position;
+            version.0 = position;
+
             for projection in self.projections.values() {
                 projection.apply(&mut entity, message.clone());
             }
 
             if let Some(catchall) = self.catchall.as_ref() {
-                catchall.apply(&mut entity, message.clone());
+                catchall.apply(&mut entity, message);
             }
-
-            version.0 = message.position;
         }
 
         self.cache
             .insert(stream_name, (entity.clone(), version.clone()))
             .await;
 
-        (entity, version)
+        debug!("Newly cached entity at version {}: {:?}", version, entity);
+
+        Ok((entity, version))
     }
 }
 
