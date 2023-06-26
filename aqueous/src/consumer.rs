@@ -205,13 +205,11 @@ impl<Settings> Consumer<Settings> {
                 .await
         });
 
-        loop {
-            if let Some(message_data) = dispatch_receiver.recv().await {
-                let update_position = message_data.global_position;
+        while let Some(message_data) = dispatch_receiver.recv().await {
+            let update_position = message_data.global_position;
 
-                self.dispatch(pool.clone(), message_data, settings.clone());
-                self.update_position(pool.clone(), update_position).await;
-            }
+            self.dispatch(pool.clone(), message_data, settings.clone());
+            self.update_position(pool.clone(), update_position).await;
         }
     }
 
