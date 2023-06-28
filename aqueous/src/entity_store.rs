@@ -145,14 +145,16 @@ where
             })
             .await;
 
-        debug!("Cached entity at version {}: {:?}", version, entity);
+        if version != Version::initial() {
+            debug!("Fetched cahced entity at version {}: {:?}", version, entity);
+        }
 
         let current_version = GetStreamVersion::new(self.pool.clone())
             .execute(stream_name.clone())
             .await?;
 
         if version == current_version {
-            debug!("Cached entity returned");
+            debug!("Stream version matches cached entity version");
             return Ok((entity, version));
         }
 
