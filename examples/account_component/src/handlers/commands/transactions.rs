@@ -13,7 +13,7 @@ pub async fn handle_deposit(
     mut writer: WriteMessages,
 ) {
     let stream_id = StreamID::new(deposit.account_id);
-    let (account, version) = store.fetch(stream_id.clone()).await;
+    let (account, version) = store.fetch(stream_id.clone()).await.unwrap();
 
     let sequence = deposit
         .metadata
@@ -51,7 +51,7 @@ pub async fn handle_withdraw(
     mut writer: WriteMessages,
 ) {
     let stream_id = StreamID::new(withdraw.account_id);
-    let (account, version) = store.fetch(stream_id.clone()).await;
+    let (account, version) = store.fetch(stream_id.clone()).await.unwrap();
 
     let sequence = withdraw
         .metadata
