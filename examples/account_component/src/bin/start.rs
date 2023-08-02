@@ -11,7 +11,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .with_env_filter(EnvFilter::new("account_component").add_directive("ignored".parse()?))
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+    tracing::subscriber::set_global_default(subscriber).expect("Set global default subscriber");
 
     let pool = PgPoolOptions::new()
         .connect("postgres://message_store@localhost/message_store")

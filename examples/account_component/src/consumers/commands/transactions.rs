@@ -9,6 +9,6 @@ impl TransactionsConsumer {
 
         Consumer::new(category)
             .extend_handlers((handle_deposit, handle_withdraw))
-            .unwrap()
+            .expect("Extend handlers")
     }
 }

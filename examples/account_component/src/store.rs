@@ -16,7 +16,7 @@ impl HandlerParam for Store {
                 apply_withdrawal_rejected,
                 apply_closed,
             ))
-            .unwrap();
+            .expect("Extend projections");
 
         Self(store)
     }

@@ -15,7 +15,10 @@ pub async fn handle_open(
     AccountCategory(category): AccountCategory,
 ) {
     let stream_id = StreamID::new(open.account_id);
-    let (account, version) = store.fetch(stream_id.clone()).await.unwrap();
+    let (account, version) = store
+        .fetch(stream_id.clone())
+        .await
+        .expect("Fetch account entity");
 
     if account.was_opened() {
         info!(
@@ -34,7 +37,7 @@ pub async fn handle_open(
         .expected_version(version)
         .execute(stream_name)
         .await
-        .unwrap();
+        .expect("Write Opened");
 }
 
 pub async fn handle_deposit(
@@ -55,7 +58,7 @@ pub async fn handle_deposit(
 
     match result {
         Ok(_) | Err(MessageStoreError::WrongExpectedVersion(_)) => return,
-        _ => result.unwrap(),
+        Err(e) => panic!("{e}"),
     };
 }
 
@@ -77,7 +80,7 @@ pub async fn handle_withdraw(
 
     match result {
         Ok(_) | Err(MessageStoreError::WrongExpectedVersion(_)) => return,
-        _ => result.unwrap(),
+        Err(e) => panic!("{e}"),
     };
 }
 
@@ -89,7 +92,10 @@ pub async fn handle_close(
     AccountCategory(category): AccountCategory,
 ) {
     let stream_id = StreamID::new(close.account_id);
-    let (account, version) = store.fetch(stream_id.clone()).await.unwrap();
+    let (account, version) = store
+        .fetch(stream_id.clone())
+        .await
+        .expect("Fetch account entity");
 
     if account.was_closed() {
         info!(
@@ -108,5 +114,5 @@ pub async fn handle_close(
         .expected_version(version)
         .execute(stream_name)
         .await
-        .unwrap();
+        .expect("Write Closed");
 }

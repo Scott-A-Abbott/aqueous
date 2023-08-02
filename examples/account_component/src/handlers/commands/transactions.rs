@@ -13,13 +13,16 @@ pub async fn handle_deposit(
     mut writer: WriteMessages,
 ) {
     let stream_id = StreamID::new(deposit.account_id);
-    let (account, version) = store.fetch(stream_id.clone()).await.unwrap();
+    let (account, version) = store
+        .fetch(stream_id.clone())
+        .await
+        .expect("Fetch account entity");
 
     let sequence = deposit
         .metadata
         .as_ref()
         .and_then(|metadata| metadata.global_position())
-        .unwrap();
+        .expect("Metadata global position");
 
     if account.has_processed(sequence) {
         info!(
@@ -40,7 +43,7 @@ pub async fn handle_deposit(
         .expected_version(version)
         .execute(stream_name)
         .await
-        .unwrap();
+        .expect("Write Deposited");
 }
 
 #[instrument(skip_all, target = "account_component")]
@@ -51,13 +54,16 @@ pub async fn handle_withdraw(
     mut writer: WriteMessages,
 ) {
     let stream_id = StreamID::new(withdraw.account_id);
-    let (account, version) = store.fetch(stream_id.clone()).await.unwrap();
+    let (account, version) = store
+        .fetch(stream_id.clone())
+        .await
+        .expect("Fetch account entity");
 
     let sequence = withdraw
         .metadata
         .as_ref()
         .and_then(|metadata| metadata.global_position())
-        .unwrap();
+        .expect("Metadata global position");
 
     if account.has_processed(sequence) {
         info!(
@@ -79,7 +85,7 @@ pub async fn handle_withdraw(
             .expected_version(version)
             .execute(stream_name)
             .await
-            .unwrap();
+            .expect("Write WithdrawalRejected");
 
         return;
     }
@@ -92,5 +98,5 @@ pub async fn handle_withdraw(
         .expected_version(version)
         .execute(stream_name)
         .await
-        .unwrap();
+        .expect("Write Withdrawal");
 }
