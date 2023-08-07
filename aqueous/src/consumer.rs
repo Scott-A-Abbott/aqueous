@@ -7,6 +7,7 @@ use tokio::{
     sync::mpsc::{channel, Sender},
     time::{interval, Duration, Interval, MissedTickBehavior},
 };
+use tracing::instrument;
 
 #[derive(Error, Debug)]
 #[error("A handler that recieves {0} already exists")]
@@ -272,6 +273,7 @@ impl Subscription {
         interval
     }
 
+    #[instrument(skip(self), fields(%category), name = "Consumer::Subscription")]
     pub async fn start(mut self, category: Category) {
         loop {
             self.poll_interval.tick().await;
