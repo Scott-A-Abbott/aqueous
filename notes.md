@@ -1,6 +1,11 @@
 ## To Do
 - Aqueous
-  - Improve error handling
-  - Add small scale feature examples
-- Add a funds transfer component
-- Logging in all the places
+  - [ ] Add small scale feature examples
+  - [ ] Refactor using generics for testability
+  - [ ] Common traits for things like `Write`
+  - [ ] Make the `HandleParam` trait be generic over a message store connection
+  - [ ] Create substitutes for common dependencies
+    - [ ] Telemetry sink
+  - [ ] Feature flag for `sqlx` and the message store types
+- Examples
+  - [ ] Add a funds transfer component
