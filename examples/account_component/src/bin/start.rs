@@ -1,13 +1,11 @@
 use account_component::consumers::commands::*;
 use aqueous::{Component, PgPoolOptions};
 use std::error::Error;
-use tracing::Level;
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::TRACE)
+    let subscriber = tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::new("account_component").add_directive("ignored".parse()?))
         .finish();
 
