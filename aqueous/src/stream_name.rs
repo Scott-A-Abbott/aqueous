@@ -100,15 +100,16 @@ impl Display for StreamName {
 pub struct StreamID(pub String);
 
 impl StreamID {
-    pub fn new(id: impl ToString) -> Self {
-        Self(id.to_string())
+    pub fn new(stream_id: impl ToString) -> Self {
+        Self(stream_id.to_string())
     }
 
     pub fn split(&self) -> Vec<StreamID> {
-        let StreamID(id) = self;
+        let StreamID(stream_id) = self;
 
-        id.split(separator::COMPOUND)
-            .map(|id| StreamID::new(id))
+        stream_id
+            .split(separator::COMPOUND)
+            .map(|stream_id| StreamID::new(stream_id))
             .collect()
     }
 
@@ -133,14 +134,14 @@ impl Display for StreamID {
 pub struct Category(pub String);
 
 impl Category {
-    pub fn new(id: impl ToString) -> Self {
-        Self(id.to_string())
+    pub fn new(category: impl ToString) -> Self {
+        Self(category.to_string())
     }
 
-    pub fn new_command(id: impl ToString) -> Self {
+    pub fn new_command(category: impl ToString) -> Self {
         let category_type = CategoryType::new("command");
 
-        Self::new(id).add_type(category_type)
+        Self::new(category).add_type(category_type)
     }
 
     pub fn split(&self) -> (EntityID, Option<CategoryType>) {
@@ -221,8 +222,8 @@ impl Display for Category {
 pub struct EntityID(pub String);
 
 impl EntityID {
-    pub fn new(id: impl ToString) -> Self {
-        Self(id.to_string())
+    pub fn new(entity_id: impl ToString) -> Self {
+        Self(entity_id.to_string())
     }
 }
 
@@ -236,8 +237,8 @@ impl Display for EntityID {
 pub struct CategoryType(pub String);
 
 impl CategoryType {
-    pub fn new(id: impl ToString) -> Self {
-        Self(id.to_string())
+    pub fn new(category_type: impl ToString) -> Self {
+        Self(category_type.to_string())
     }
 
     pub fn split(&self) -> Vec<CategoryType> {
