@@ -166,7 +166,7 @@ where
         trace!("Messages: {:?}", messages);
 
         for message in messages {
-            let position = message.position;
+            let position = message.metadata.position().unwrap();
             version.0 = position;
 
             for projection in self.projections.values() {

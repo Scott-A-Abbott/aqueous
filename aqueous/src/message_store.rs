@@ -1,5 +1,6 @@
 use crate::*;
-use sqlx::{types::Json, PgPool};
+use serde_json::Value;
+use sqlx::PgPool;
 use sqlx::{Error as SqlxError, Execute};
 use thiserror::Error;
 use tracing::{debug, instrument, trace};
@@ -277,15 +278,7 @@ impl<Settings> HandlerParam<Settings> for GetCategoryMessages {
 pub struct WriteMessages {
     pool: PgPool,
     expected_version: Option<Version>,
-    messages: Vec<WriteMessageData>,
-}
-
-#[derive(Debug, serde::Serialize)]
-struct WriteMessageData {
-    #[serde(rename = "type")]
-    type_name: String,
-    data: String,
-    metadata: Option<Json<Metadata>>,
+    messages: Vec<MessageData>,
 }
 
 impl WriteMessages {
@@ -313,12 +306,12 @@ impl WriteMessages {
     {
         let msg: Msg<T> = message.into();
 
-        let data = serde_json::to_string(&msg.data).unwrap();
+        let data = serde_json::to_value(&msg.data).unwrap();
 
-        let message_data = WriteMessageData {
+        let message_data = MessageData {
             data,
             type_name: T::TYPE_NAME.to_owned(),
-            metadata: msg.metadata.map(|metadata| Json(metadata)),
+            metadata: msg.metadata,
         };
 
         self.messages.push(message_data);
@@ -338,6 +331,12 @@ impl WriteMessages {
         for message in self.messages.iter() {
             let id = uuid::Uuid::new_v4();
             let version = self.expected_version.as_ref().map(|Version(value)| value);
+            let metadata = if message.metadata.is_empty() {
+                Value::Null
+            } else {
+                let map = message.metadata.0.clone();
+                Value::Object(map)
+            };
 
             let query = sqlx::query_as(
                 "SELECT write_message($1::varchar, $2::varchar, $3::varchar, $4::jsonb, $5::jsonb, $6::bigint);",
@@ -346,7 +345,7 @@ impl WriteMessages {
                 .bind(stream_name.clone())
                 .bind(&message.type_name)
                 .bind(&message.data)
-                .bind(&message.metadata)
+                .bind(metadata)
                 .bind(&version);
 
             trace!(

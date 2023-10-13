@@ -20,8 +20,7 @@ pub async fn handle_deposit(
 
     let sequence = deposit
         .metadata
-        .as_ref()
-        .and_then(|metadata| metadata.global_position())
+        .global_position()
         .expect("Metadata global position");
 
     if account.has_processed(sequence) {
@@ -61,8 +60,7 @@ pub async fn handle_withdraw(
 
     let sequence = withdraw
         .metadata
-        .as_ref()
-        .and_then(|metadata| metadata.global_position())
+        .global_position()
         .expect("Metadata global position");
 
     if account.has_processed(sequence) {

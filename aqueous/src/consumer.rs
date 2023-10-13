@@ -207,7 +207,7 @@ impl<Settings> Consumer<Settings> {
         });
 
         while let Some(message_data) = dispatch_receiver.recv().await {
-            let update_position = message_data.global_position;
+            let update_position = message_data.metadata.global_position().unwrap();
 
             self.dispatch(pool.clone(), message_data, settings.clone());
             self.update_position(pool.clone(), update_position).await;
@@ -285,7 +285,7 @@ impl Subscription {
             let messages = self.get.execute(category.clone()).await.unwrap();
 
             for message in messages.into_iter() {
-                let message_pos = message.global_position;
+                let message_pos = message.metadata.global_position().unwrap();
 
                 if let Some(pos) = self.position {
                     if pos >= message_pos {
