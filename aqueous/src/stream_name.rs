@@ -13,10 +13,13 @@ pub mod separator {
 pub struct StreamName(pub String);
 
 impl StreamName {
-    pub fn new(category: Category, id: StreamID) -> Self {
+    pub fn new(stream_name: impl ToString) -> Self {
+        Self(stream_name.to_string())
+    }
+
+    pub fn from_parts(category: Category, id: StreamID) -> Self {
         let Category(category) = category;
-        let StreamID(id) = id;
-        let stream_name = format!("{}{}{}", category, separator::ID, id);
+        let stream_name = category + separator::ID + id.as_ref();
 
         StreamName(stream_name)
     }
@@ -46,7 +49,7 @@ impl StreamName {
     }
 
     pub fn add_id(&self, new_id: StreamID) -> Self {
-        let (Category(category), id) = self.split();
+        let (category, id) = self.split();
 
         match id {
             Some(id) => {
@@ -55,14 +58,9 @@ impl StreamName {
 
                 let joined_id = StreamID::join(&ids);
 
-                Self(category).add_id(joined_id)
+                Self::from_parts(category, joined_id)
             }
-            None => {
-                let StreamID(new_id) = new_id;
-                let stream_name = format!("{}{}{}", category, separator::ID, new_id);
-
-                Self(stream_name)
-            }
+            None => Self::from_parts(category, new_id),
         }
     }
 
@@ -90,6 +88,12 @@ impl StreamName {
     }
 }
 
+impl AsRef<str> for StreamName {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
 impl Display for StreamName {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -105,22 +109,28 @@ impl StreamID {
     }
 
     pub fn split(&self) -> Vec<StreamID> {
-        let StreamID(stream_id) = self;
+        let StreamID(stream_id_string) = self;
 
-        stream_id
+        stream_id_string
             .split(separator::COMPOUND)
-            .map(|stream_id| StreamID::new(stream_id))
+            .map(|stream_id_str| StreamID::new(stream_id_str))
             .collect()
     }
 
-    pub fn join(types: &[Self]) -> Self {
-        let joined_type = types
+    pub fn join(ids: &[Self]) -> Self {
+        let joined_ids = ids
             .iter()
-            .map(|Self(s)| s.as_str())
+            .map(|Self(id)| id.as_str())
             .collect::<Vec<_>>()
             .join(separator::COMPOUND);
 
-        Self(joined_type)
+        Self(joined_ids)
+    }
+}
+
+impl AsRef<str> for StreamID {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
     }
 }
 
@@ -138,6 +148,14 @@ impl Category {
         Self(category.to_string())
     }
 
+    pub fn from_parts(entity_id: EntityID, category_type: CategoryType) -> Self {
+        let EntityID(entity_id) = entity_id;
+        let CategoryType(category_type) = category_type;
+        let category_string = entity_id + separator::CATEGORY_TYPE + &category_type;
+
+        Self::new(category_string)
+    }
+
     pub fn new_command(category: impl ToString) -> Self {
         let category_type = CategoryType::new("command");
 
@@ -149,10 +167,13 @@ impl Category {
         let mut splits = category
             .split(separator::CATEGORY_TYPE)
             .collect::<VecDeque<_>>();
-        let entity_id = EntityID::new(splits.pop_front().expect("EntityID"));
+        let id_str = splits.pop_front().expect("EntityID");
+        let entity_id = EntityID::new(id_str);
 
         let category_type = if !splits.is_empty() {
-            let category_type = CategoryType(splits.make_contiguous().concat());
+            let type_string = splits.make_contiguous().concat();
+            let category_type = CategoryType(type_string);
+
             Some(category_type)
         } else {
             None
@@ -208,7 +229,13 @@ impl Category {
     }
 
     pub fn stream_name(&self, id: StreamID) -> StreamName {
-        StreamName::new(self.clone(), id)
+        StreamName::from_parts(self.clone(), id)
+    }
+}
+
+impl AsRef<str> for Category {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
     }
 }
 
@@ -227,6 +254,12 @@ impl EntityID {
     }
 }
 
+impl AsRef<str> for EntityID {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
 impl Display for EntityID {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -242,11 +275,11 @@ impl CategoryType {
     }
 
     pub fn split(&self) -> Vec<CategoryType> {
-        let CategoryType(category_type) = self;
+        let CategoryType(category_type_string) = self;
 
-        category_type
+        category_type_string
             .split(separator::COMPOUND)
-            .map(|category_type| CategoryType::new(category_type))
+            .map(|category_type_str| CategoryType::new(category_type_str))
             .collect()
     }
 
@@ -258,6 +291,12 @@ impl CategoryType {
             .join(separator::COMPOUND);
 
         Self(joined_type)
+    }
+}
+
+impl AsRef<str> for CategoryType {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
     }
 }
 
