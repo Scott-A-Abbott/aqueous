@@ -7,7 +7,7 @@ pub mod store;
 pub use account::Account;
 pub use store::Store;
 
-use aqueous::{Category, HandlerParam, PgPool};
+use aqueous::{Category, Connection, HandlerParam};
 
 pub struct AccountCategory(pub Category);
 
@@ -19,7 +19,7 @@ impl AccountCategory {
 }
 
 impl HandlerParam for AccountCategory {
-    fn build(_: PgPool, _: ()) -> Self {
+    fn build(_: Connection, _: ()) -> Self {
         Self::new()
     }
 }
@@ -34,7 +34,7 @@ impl AccountCommandCategory {
 }
 
 impl HandlerParam for AccountCommandCategory {
-    fn build(_: PgPool, _: ()) -> Self {
+    fn build(_: Connection, _: ()) -> Self {
         Self::new()
     }
 }
@@ -49,7 +49,7 @@ impl TransactionCategory {
 }
 
 impl HandlerParam for TransactionCategory {
-    fn build(_: PgPool, _: ()) -> Self {
+    fn build(_: Connection, _: ()) -> Self {
         Self::new()
     }
 }

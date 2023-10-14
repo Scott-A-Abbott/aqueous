@@ -1,13 +1,17 @@
-use crate::{Message, MessageData, Msg};
-use sqlx::PgPool;
+use crate::{Connection, Message, MessageData, Msg};
 use std::{collections::HashMap, marker::PhantomData, ops::Deref};
 
 pub trait Handler<Settings = ()> {
-    fn call(&mut self, message_data: MessageData, pool: PgPool, settings: Settings) -> bool;
+    fn call(
+        &mut self,
+        message_data: MessageData,
+        connection: Connection,
+        settings: Settings,
+    ) -> bool;
 }
 
 pub trait HandlerParam<Settings = ()>: Sized {
-    fn build(pool: PgPool, settings: Settings) -> Self;
+    fn build(connection: Connection, settings: Settings) -> Self;
 }
 
 pub struct FunctionHandler<Params, Return, F> {
@@ -169,8 +173,8 @@ macro_rules! impl_handler_for_catchall {
             $re: std::future::Future<Output = ()>,
             S: Clone,
         {
-            fn call(&mut self, message_data: MessageData, _pool: PgPool, _settings: S) -> bool {
-                $(let $ty = $ty::build(_pool.clone(), _settings.clone());)*
+            fn call(&mut self, message_data: MessageData, _connection: Connection, _settings: S) -> bool {
+                $(let $ty = $ty::build(_connection.clone(), _settings.clone());)*
                 tokio::task::block_in_place(move || {
                     tokio::runtime::Handle::current().block_on(async move {
                         (self.func)(message_data, $($ty,)*).await;
@@ -219,10 +223,10 @@ macro_rules! impl_handler {
             $re: std::future::Future<Output = ()>,
             S: Clone,
         {
-            fn call(&mut self, message_data: MessageData, _pool: PgPool, _settings: S) -> bool {
+            fn call(&mut self, message_data: MessageData, _connection: Connection, _settings: S) -> bool {
                 if message_data.type_name == $first::TYPE_NAME.to_string() {
                     let msg: Msg<$first> = Msg::from_data(message_data.clone()).unwrap();
-                    $(let $ty = $ty::build(_pool.clone(), _settings.clone());)*
+                    $(let $ty = $ty::build(_connection.clone(), _settings.clone());)*
                     tokio::task::block_in_place(move || {
                         tokio::runtime::Handle::current().block_on(async move {
                             (self.func)(msg, $($ty,)*).await;

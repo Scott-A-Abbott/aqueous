@@ -1,5 +1,5 @@
 use account_component::consumers::commands::*;
-use aqueous::{Component, PgPoolOptions};
+use aqueous::{Component, Connection};
 use std::error::Error;
 use tracing_subscriber::EnvFilter;
 
@@ -11,14 +11,13 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     tracing::subscriber::set_global_default(subscriber).expect("Set global default subscriber");
 
-    let pool = PgPoolOptions::new()
-        .connect("postgres://message_store@localhost/message_store")
+    let connection = Connection::builder()
+        .build_with_url("postgres://message_store@localhost/message_store")
         .await?;
 
-    Component::default()
+    Component::simple(connection)
         .add_consumer(CommandsConsumer::build())
         .add_consumer(TransactionsConsumer::build())
-        .with_pool(pool)
         .start()
         .await;
 

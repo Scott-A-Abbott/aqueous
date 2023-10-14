@@ -1,6 +1,5 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use std::{collections::HashMap, marker::PhantomData};
 use thiserror::Error;
 use tokio::{
@@ -152,8 +151,12 @@ impl<Settings> Consumer<Settings> {
         StreamName(category)
     }
 
-    pub fn dispatch(&mut self, pool: PgPool, message_data: MessageData, settings: Settings)
-    where
+    pub fn dispatch(
+        &mut self,
+        connection: Connection,
+        message_data: MessageData,
+        settings: Settings,
+    ) where
         Settings: Clone,
     {
         let mut processed_message = false;
@@ -162,12 +165,12 @@ impl<Settings> Consumer<Settings> {
             let message_data = message_data.clone();
             let settings = settings.clone();
 
-            let was_processed = handler.call(message_data, pool.clone(), settings);
+            let was_processed = handler.call(message_data, connection.clone(), settings);
             processed_message = processed_message || was_processed;
         }
 
         if let Some(catchall) = self.catchall.as_mut() {
-            processed_message = catchall.call(message_data.clone(), pool, settings);
+            processed_message = catchall.call(message_data.clone(), connection, settings);
         }
 
         if self.strict && !processed_message {
@@ -175,17 +178,17 @@ impl<Settings> Consumer<Settings> {
         }
     }
 
-    pub async fn start(&mut self, pool: PgPool, settings: Settings)
+    pub async fn start(&mut self, connection: Connection, settings: Settings)
     where
         Settings: Clone,
     {
-        let mut get = GetCategoryMessages::new(pool.clone());
+        let mut get = GetCategoryMessages::new(connection.clone());
 
         if let Some(correlation) = self.correlation.as_ref() {
             get.correlation(correlation);
         }
 
-        if let Some(position) = self.get_position(pool.clone()).await {
+        if let Some(position) = self.get_position(connection.clone()).await {
             get.position(position);
         }
 
@@ -209,15 +212,16 @@ impl<Settings> Consumer<Settings> {
         while let Some(message_data) = dispatch_receiver.recv().await {
             let update_position = message_data.metadata.global_position().unwrap();
 
-            self.dispatch(pool.clone(), message_data, settings.clone());
-            self.update_position(pool.clone(), update_position).await;
+            self.dispatch(connection.clone(), message_data, settings.clone());
+            self.update_position(connection.clone(), update_position)
+                .await;
         }
     }
 
-    pub async fn update_position(&mut self, pool: PgPool, position: i64) {
+    pub async fn update_position(&mut self, connection: Connection, position: i64) {
         self.position_update_counter += 1;
 
-        let mut write = WriteMessages::new(pool.clone());
+        let mut write = WriteMessages::new(connection.clone());
         write.add_message(Recorded { position });
 
         if self.position_update_counter >= self.position_update_interval {
@@ -228,9 +232,9 @@ impl<Settings> Consumer<Settings> {
         }
     }
 
-    pub async fn get_position(&mut self, pool: PgPool) -> Option<i64> {
+    pub async fn get_position(&mut self, connection: Connection) -> Option<i64> {
         let stream_name = self.position_stream_name();
-        let message_data = GetLastStreamMessage::new(pool.clone())
+        let message_data = GetLastStreamMessage::new(connection.clone())
             .execute(stream_name)
             .await
             .ok()??;

@@ -1,6 +1,5 @@
 use crate::*;
 use moka::future::Cache;
-use sqlx::PgPool;
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
@@ -37,14 +36,14 @@ pub struct EntityStore<Entity> {
     catchall: Option<Box<dyn Projection<Entity> + Send>>,
     cache: Cache<StreamName, (Entity, Version)>,
     category: Category,
-    pool: PgPool,
+    connection: Connection,
 }
 
 impl<Entity> EntityStore<Entity>
 where
     Entity: Clone + Send + Sync + 'static,
 {
-    pub fn build(pool: PgPool, category: Category) -> Self {
+    pub fn build(connection: Connection, category: Category) -> Self {
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
                 let entity_cache = ENTITY_CACHE.get_or_init(|| Cache::new(5));
@@ -69,7 +68,7 @@ where
                     catchall: None,
                     cache: cache.clone(),
                     category,
-                    pool,
+                    connection,
                 }
             })
         })
@@ -149,7 +148,7 @@ where
             debug!("Fetched cahced entity at version {}: {:?}", version, entity);
         }
 
-        let current_version = GetStreamVersion::new(self.pool.clone())
+        let current_version = GetStreamVersion::new(self.connection.clone())
             .execute(stream_name.clone())
             .await?;
 
@@ -158,7 +157,7 @@ where
             return Ok((entity, version));
         }
 
-        let messages = GetStreamMessages::new(self.pool.clone())
+        let messages = GetStreamMessages::new(self.connection.clone())
             .position(version.0 + 1)
             .execute(stream_name.clone())
             .await?;

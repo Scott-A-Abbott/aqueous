@@ -1,6 +1,8 @@
+pub mod connection;
+pub use connection::*;
+
 use crate::*;
 use serde_json::Value;
-use sqlx::PgPool;
 use sqlx::{Error as SqlxError, Execute};
 use thiserror::Error;
 use tracing::{debug, instrument, trace};
@@ -37,12 +39,12 @@ impl From<SqlxError> for MessageStoreError {
 }
 
 pub struct GetStreamVersion {
-    pool: PgPool,
+    connection: Connection,
 }
 
 impl GetStreamVersion {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(connection: Connection) -> Self {
+        Self { connection }
     }
 
     #[instrument(name = "GetStreamVersion::execute", skip(self), fields(%stream_name))]
@@ -59,7 +61,7 @@ impl GetStreamVersion {
 
         trace!("{} [{}]", query.sql(), stream_name);
 
-        let StreamVersion { stream_version } = query.fetch_one(&self.pool).await?;
+        let StreamVersion { stream_version } = query.fetch_one(&self.connection.pool).await?;
 
         let version = stream_version.map_or(Version::initial(), |v| Version(v));
         debug!("Version of stream {} is {}", stream_name, version);
@@ -69,20 +71,20 @@ impl GetStreamVersion {
 }
 
 impl<Settings> HandlerParam<Settings> for GetStreamVersion {
-    fn build(pool: PgPool, _: Settings) -> Self {
-        Self::new(pool)
+    fn build(connection: Connection, _: Settings) -> Self {
+        Self::new(connection)
     }
 }
 
 pub struct GetLastStreamMessage {
-    pool: PgPool,
+    connection: Connection,
     message_type: Option<String>,
 }
 
 impl GetLastStreamMessage {
-    pub fn new(pool: PgPool) -> Self {
+    pub fn new(connection: Connection) -> Self {
         Self {
-            pool,
+            connection,
             message_type: None,
         }
     }
@@ -106,27 +108,30 @@ impl GetLastStreamMessage {
 
         trace!("{} [{}, {:?}]", query.sql(), stream_name, self.message_type);
 
-        query.fetch_optional(&self.pool).await.map_err(|e| e.into())
+        query
+            .fetch_optional(&self.connection.pool)
+            .await
+            .map_err(|e| e.into())
     }
 }
 
 impl<Settings> HandlerParam<Settings> for GetLastStreamMessage {
-    fn build(pool: PgPool, _: Settings) -> Self {
-        Self::new(pool)
+    fn build(connection: Connection, _: Settings) -> Self {
+        Self::new(connection)
     }
 }
 
 pub struct GetStreamMessages {
-    pool: PgPool,
+    connection: Connection,
     position: Option<i64>,
     batch_size: Option<i64>,
     condition: Option<String>,
 }
 
 impl GetStreamMessages {
-    pub fn new(pool: PgPool) -> Self {
+    pub fn new(connection: Connection) -> Self {
         Self {
-            pool,
+            connection,
             position: None,
             batch_size: None,
             condition: None,
@@ -173,18 +178,21 @@ impl GetStreamMessages {
             batch_size
         );
 
-        query.fetch_all(&self.pool).await.map_err(|e| e.into())
+        query
+            .fetch_all(&self.connection.pool)
+            .await
+            .map_err(|e| e.into())
     }
 }
 
 impl<Settings> HandlerParam<Settings> for GetStreamMessages {
-    fn build(pool: PgPool, _: Settings) -> Self {
-        Self::new(pool)
+    fn build(connection: Connection, _: Settings) -> Self {
+        Self::new(connection)
     }
 }
 
 pub struct GetCategoryMessages {
-    pool: PgPool,
+    connection: Connection,
     position: Option<i64>,
     batch_size: Option<i64>,
     correlation: Option<String>,
@@ -194,9 +202,9 @@ pub struct GetCategoryMessages {
 }
 
 impl GetCategoryMessages {
-    pub fn new(pool: PgPool) -> Self {
+    pub fn new(connection: Connection) -> Self {
         Self {
-            pool,
+            connection,
             position: None,
             batch_size: None,
             correlation: None,
@@ -265,26 +273,29 @@ impl GetCategoryMessages {
             self.condition
         );
 
-        query.fetch_all(&self.pool).await.map_err(|e| e.into())
+        query
+            .fetch_all(&self.connection.pool)
+            .await
+            .map_err(|e| e.into())
     }
 }
 
 impl<Settings> HandlerParam<Settings> for GetCategoryMessages {
-    fn build(pool: PgPool, _: Settings) -> Self {
-        Self::new(pool)
+    fn build(connection: Connection, _: Settings) -> Self {
+        Self::new(connection)
     }
 }
 
 pub struct WriteMessages {
-    pool: PgPool,
+    connection: Connection,
     expected_version: Option<Version>,
     messages: Vec<MessageData>,
 }
 
 impl WriteMessages {
-    pub fn new(pool: PgPool) -> Self {
+    pub fn new(connection: Connection) -> Self {
         Self {
-            pool,
+            connection,
             expected_version: None,
             messages: Vec::new(),
         }
@@ -326,7 +337,7 @@ impl WriteMessages {
         let mut last_position = LastPosition(-1);
         let StreamName(ref stream_name) = stream_name;
 
-        let mut transaction = self.pool.begin().await?;
+        let mut transaction = self.connection.begin().await?;
 
         for message in self.messages.iter() {
             let id = uuid::Uuid::new_v4();
@@ -376,7 +387,7 @@ impl WriteMessages {
 }
 
 impl<Settings> HandlerParam<Settings> for WriteMessages {
-    fn build(pool: PgPool, _: Settings) -> Self {
-        Self::new(pool)
+    fn build(connection: Connection, _: Settings) -> Self {
+        Self::new(connection)
     }
 }

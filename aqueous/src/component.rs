@@ -1,54 +1,29 @@
-use crate::Consumer;
-use sqlx::{postgres::PgConnectOptions, postgres::PgPoolOptions, PgPool};
+use crate::{Connection, Consumer};
 use tokio::task::JoinSet;
 
 pub struct Component<Settings = ()> {
     consumers: Vec<Consumer<Settings>>,
     settings: Settings,
-    connect_options: PgConnectOptions,
-    pool_options: PgPoolOptions,
-    pool: Option<PgPool>,
+    connection: Connection,
 }
 
-impl<S> Default for Component<S>
-where
-    S: Default,
-{
-    fn default() -> Self {
+impl Component {
+    pub fn simple(connection: Connection) -> Self {
         Self {
             consumers: Vec::new(),
-            settings: Default::default(),
-            connect_options: PgConnectOptions::new(),
-            pool_options: PgPoolOptions::new(),
-            pool: None,
+            settings: (),
+            connection,
         }
     }
 }
 
 impl<S> Component<S> {
-    pub fn new(settings: S) -> Self {
+    pub fn new(connection: Connection, settings: S) -> Self {
         Self {
             consumers: Vec::new(),
             settings,
-            connect_options: PgConnectOptions::new(),
-            pool_options: PgPoolOptions::new(),
-            pool: None,
+            connection,
         }
-    }
-
-    pub fn with_connect_options(mut self, connect_options: PgConnectOptions) -> Self {
-        self.connect_options = connect_options;
-        self
-    }
-
-    pub fn with_pool_options(mut self, pool_options: PgPoolOptions) -> Self {
-        self.pool_options = pool_options;
-        self
-    }
-
-    pub fn with_pool(mut self, pool: PgPool) -> Self {
-        self.pool = Some(pool);
-        self
     }
 
     pub fn add_consumer(mut self, consumer: Consumer<S>) -> Self {
@@ -61,20 +36,12 @@ impl<S> Component<S> {
         S: Clone + Send + 'static,
     {
         let mut set = JoinSet::new();
-        let pool = match self.pool {
-            Some(pool) => pool,
-            None => self
-                .pool_options
-                .connect_with(self.connect_options)
-                .await
-                .unwrap(),
-        };
 
         for mut consumer in self.consumers {
             let settings = self.settings.clone();
-            let pool = pool.clone();
+            let connection = self.connection.clone();
 
-            set.spawn(async move { consumer.start(pool, settings).await });
+            set.spawn(async move { consumer.start(connection, settings).await });
         }
 
         // ## Should the entire component exit at any panic? Or just the consumer thread?
