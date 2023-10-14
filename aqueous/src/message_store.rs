@@ -1,42 +1,13 @@
 pub mod connection;
+pub mod error;
+
 pub use connection::*;
+use error::Error;
 
 use crate::*;
 use serde_json::Value;
-use sqlx::{Error as SqlxError, Execute};
-use thiserror::Error;
+use sqlx::Execute;
 use tracing::{debug, instrument, trace};
-
-#[derive(Error, Debug)]
-pub enum MessageStoreError {
-    #[error("{0}")]
-    WrongExpectedVersion(String),
-    #[error("{0}")]
-    Database(String),
-    #[error("{0}")]
-    Pool(String),
-    #[error(transparent)]
-    Other(SqlxError),
-}
-
-impl From<SqlxError> for MessageStoreError {
-    fn from(sqlx_error: SqlxError) -> Self {
-        match sqlx_error {
-            SqlxError::Database(ref error) => {
-                let message = error.message();
-                if message.contains("Wrong expected version") {
-                    return Self::WrongExpectedVersion(message.to_string());
-                }
-
-                Self::Database(format!("{}", sqlx_error))
-            }
-            SqlxError::PoolClosed | SqlxError::PoolTimedOut => {
-                Self::Pool(format!("{}", sqlx_error))
-            }
-            _ => Self::Other(sqlx_error),
-        }
-    }
-}
 
 pub struct GetStreamVersion {
     connection: Connection,
@@ -48,7 +19,7 @@ impl GetStreamVersion {
     }
 
     #[instrument(name = "GetStreamVersion::execute", skip(self), fields(%stream_name))]
-    pub async fn execute(&self, stream_name: StreamName) -> Result<Version, MessageStoreError> {
+    pub async fn execute(&self, stream_name: StreamName) -> Result<Version, Error> {
         let StreamName(stream_name) = stream_name;
 
         #[derive(sqlx::FromRow)]
@@ -95,10 +66,7 @@ impl GetLastStreamMessage {
     }
 
     #[instrument(name = "GetLastStreamMessage::execute", skip(self), fields(%stream_name))]
-    pub async fn execute(
-        &mut self,
-        stream_name: StreamName,
-    ) -> Result<Option<MessageData>, MessageStoreError> {
+    pub async fn execute(&mut self, stream_name: StreamName) -> Result<Option<MessageData>, Error> {
         let StreamName(stream_name) = stream_name;
 
         let query =
@@ -154,10 +122,7 @@ impl GetStreamMessages {
     }
 
     #[instrument(name = "GetStreamMessages::execute", skip(self), fields(%stream_name))]
-    pub async fn execute(
-        &mut self,
-        stream_name: StreamName,
-    ) -> Result<Vec<MessageData>, MessageStoreError> {
+    pub async fn execute(&mut self, stream_name: StreamName) -> Result<Vec<MessageData>, Error> {
         let StreamName(stream_name) = stream_name;
         let position = self.position.unwrap_or_else(|| 0);
         let batch_size = self.batch_size.unwrap_or_else(|| 1000);
@@ -245,7 +210,7 @@ impl GetCategoryMessages {
     }
 
     #[instrument(name = "GetCategoryMessages::execute", skip(self), fields(%category))]
-    pub async fn execute(&self, category: Category) -> Result<Vec<MessageData>, MessageStoreError> {
+    pub async fn execute(&self, category: Category) -> Result<Vec<MessageData>, Error> {
         let Category(category) = category;
         let position = self.position.unwrap_or_else(|| 0);
         let batch_size = self.batch_size.unwrap_or_else(|| 1000);
@@ -330,7 +295,7 @@ impl WriteMessages {
     }
 
     #[instrument(name = "WriteMessages::execute", skip(self), fields(%stream_name))]
-    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, MessageStoreError> {
+    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, Error> {
         #[derive(sqlx::FromRow)]
         struct LastPosition(i64);
 

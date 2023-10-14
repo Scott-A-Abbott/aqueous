@@ -1,4 +1,4 @@
-use crate::*;
+use super::error::Error;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
     PgPool,
@@ -18,7 +18,7 @@ impl Connection {
         Self { pool }
     }
 
-    pub async fn connect(url: &str) -> Result<Self, MessageStoreError> {
+    pub async fn connect(url: &str) -> Result<Self, Error> {
         let pool = PgPoolOptions::default().connect(url).await?;
         Ok(Self::new(pool))
     }
@@ -66,7 +66,7 @@ impl ConnectionBuilder {
         self
     }
 
-    pub async fn connect(self) -> Result<Connection, MessageStoreError> {
+    pub async fn connect(self) -> Result<Connection, Error> {
         let pool = self.pool_options.connect_with(self.connect_options).await?;
         Ok(Connection::new(pool))
     }

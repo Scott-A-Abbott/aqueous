@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{message_store::error::Error as MessageStoreError, *};
 use moka::future::Cache;
 use std::{
     any::{Any, TypeId},
