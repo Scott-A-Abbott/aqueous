@@ -1,18 +1,18 @@
-use crate::{Connection, Consumer};
+use crate::{Connection, ConnectionBuilder, Consumer};
 use tokio::task::JoinSet;
 
 pub struct Component<Settings = ()> {
     consumers: Vec<Consumer<Settings>>,
     settings: Settings,
-    connection: Connection,
+    connection: Option<Connection>,
 }
 
-impl Component {
-    pub fn simple(connection: Connection) -> Self {
+impl Default for Component {
+    fn default() -> Self {
         Self {
             consumers: Vec::new(),
             settings: (),
-            connection,
+            connection: None,
         }
     }
 }
@@ -22,8 +22,13 @@ impl<S> Component<S> {
         Self {
             consumers: Vec::new(),
             settings,
-            connection,
+            connection: Some(connection),
         }
+    }
+
+    pub fn with_connection(mut self, connection: Connection) -> Self {
+        self.connection = Some(connection);
+        self
     }
 
     pub fn add_consumer(mut self, consumer: Consumer<S>) -> Self {
@@ -31,7 +36,7 @@ impl<S> Component<S> {
         self
     }
 
-    pub async fn start(self)
+    pub async fn start(mut self)
     where
         S: Clone + Send + 'static,
     {
@@ -39,7 +44,13 @@ impl<S> Component<S> {
 
         for mut consumer in self.consumers {
             let settings = self.settings.clone();
-            let connection = self.connection.clone();
+            let connection = match self.connection.take() {
+                Some(connection) => connection,
+                None => ConnectionBuilder::default()
+                    .build()
+                    .await
+                    .expect("Connecting with default options"),
+            };
 
             set.spawn(async move { consumer.start(connection, settings).await });
         }

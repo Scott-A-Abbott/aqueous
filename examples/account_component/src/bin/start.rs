@@ -15,7 +15,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .build_with_url("postgres://message_store@localhost/message_store")
         .await?;
 
-    Component::simple(connection)
+    Component::default()
+        .with_connection(connection)
         .add_consumer(CommandsConsumer::build())
         .add_consumer(TransactionsConsumer::build())
         .start()
