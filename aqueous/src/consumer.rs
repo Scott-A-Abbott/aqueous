@@ -221,7 +221,7 @@ impl<Settings> Consumer<Settings> {
     pub async fn update_position(&mut self, connection: Connection, position: i64) {
         self.position_update_counter += 1;
 
-        let mut write = WriteMessages::new(connection.clone());
+        let mut write = Write::build(connection.clone());
         write.add_message(Recorded { position });
 
         if self.position_update_counter >= self.position_update_interval {

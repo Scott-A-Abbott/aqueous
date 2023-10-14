@@ -6,9 +6,8 @@ use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let connection = Connection::
-        connect("postgres://message_store@localhost/message_store")
-        .await?;
+    let connection =
+        Connection::connect("postgres://message_store@localhost/message_store").await?;
 
     let mut args: VecDeque<String> = env::args().collect();
     args.pop_front();
@@ -37,7 +36,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Writing {:#?}", withdraw);
 
-    WriteMessages::new(connection)
+    Write::build(connection)
         .add_message(withdraw)
         .execute(stream_name)
         .await?;

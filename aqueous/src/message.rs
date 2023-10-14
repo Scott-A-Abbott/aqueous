@@ -17,6 +17,21 @@ pub struct MessageData {
     pub data: Value,
 }
 
+impl<M: Message + serde::Serialize> TryFrom<Msg<M>> for MessageData {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(message: Msg<M>) -> Result<Self, Self::Error> {
+        let data = serde_json::to_value(&message.data)?;
+        let result = Self {
+            data,
+            type_name: M::TYPE_NAME.to_string(),
+            metadata: Metadata::follow(message.metadata),
+        };
+
+        Ok(result)
+    }
+}
+
 // Should have a derive macro that can generate the message_type needed for MessageData
 pub trait Message: Sized {
     const TYPE_NAME: &'static str;

@@ -23,3 +23,12 @@ impl<A, S> Object<A, S> {
         sub.into_inner().unwrap()
     }
 }
+
+impl<A, S> Default for Object<A, S>
+where
+    S: Default,
+{
+    fn default() -> Self {
+        Self::substitute(S::default())
+    }
+}

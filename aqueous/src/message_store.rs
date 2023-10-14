@@ -1,11 +1,12 @@
 pub mod connection;
 pub(crate) mod error;
+pub mod write;
 
 pub use connection::*;
-use error::Error;
+pub use write::Write;
 
 use crate::*;
-use serde_json::Value;
+use error::Error;
 use sqlx::Execute;
 use tracing::{debug, instrument, trace};
 
@@ -248,112 +249,6 @@ impl GetCategoryMessages {
 }
 
 impl<Settings> HandlerParam<Settings> for GetCategoryMessages {
-    fn build(connection: Connection, _: Settings) -> Self {
-        Self::new(connection)
-    }
-}
-
-pub struct WriteMessages {
-    connection: Connection,
-    expected_version: Option<Version>,
-    messages: Vec<MessageData>,
-}
-
-impl WriteMessages {
-    pub fn new(connection: Connection) -> Self {
-        Self {
-            connection,
-            expected_version: None,
-            messages: Vec::new(),
-        }
-    }
-
-    pub fn expected_version(&mut self, expected_version: Version) -> &mut Self {
-        self.expected_version = Some(expected_version);
-        self
-    }
-
-    pub fn initial(&mut self) -> &mut Self {
-        self.expected_version = Some(Version::initial());
-        self
-    }
-
-    pub fn add_message<T>(&mut self, message: impl Into<Msg<T>>) -> &mut Self
-    where
-        T: serde::Serialize + Message,
-    {
-        let msg: Msg<T> = message.into();
-
-        let data = serde_json::to_value(&msg.data).unwrap();
-
-        let message_data = MessageData {
-            data,
-            type_name: T::TYPE_NAME.to_owned(),
-            metadata: msg.metadata,
-        };
-
-        self.messages.push(message_data);
-        self
-    }
-
-    #[instrument(name = "WriteMessages::execute", skip(self), fields(%stream_name))]
-    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, Error> {
-        #[derive(sqlx::FromRow)]
-        struct LastPosition(i64);
-
-        let mut last_position = LastPosition(-1);
-        let StreamName(ref stream_name) = stream_name;
-
-        let mut transaction = self.connection.begin().await?;
-
-        for message in self.messages.iter() {
-            let id = uuid::Uuid::new_v4();
-            let version = self.expected_version.as_ref().map(|Version(value)| value);
-            let metadata = if message.metadata.is_empty() {
-                Value::Null
-            } else {
-                let map = message.metadata.0.clone();
-                Value::Object(map)
-            };
-
-            let query = sqlx::query_as(
-                "SELECT write_message($1::varchar, $2::varchar, $3::varchar, $4::jsonb, $5::jsonb, $6::bigint);",
-            )
-                .bind(id.clone())
-                .bind(stream_name.clone())
-                .bind(&message.type_name)
-                .bind(&message.data)
-                .bind(metadata)
-                .bind(&version);
-
-            trace!(
-                "{} [{}, {}, {}, {}, {:?}, {:?}]",
-                query.sql(),
-                id,
-                stream_name,
-                message.type_name,
-                message.data,
-                message.metadata,
-                version
-            );
-
-            last_position = query.fetch_one(&mut *transaction).await?;
-
-            self.expected_version = self
-                .expected_version
-                .as_mut()
-                .map(|Version(value)| Version(*value + 1));
-        }
-
-        transaction.commit().await?;
-
-        let LastPosition(position) = last_position;
-
-        Ok(position)
-    }
-}
-
-impl<Settings> HandlerParam<Settings> for WriteMessages {
     fn build(connection: Connection, _: Settings) -> Self {
         Self::new(connection)
     }

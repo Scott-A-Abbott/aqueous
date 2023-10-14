@@ -2,7 +2,7 @@ use crate::{
     messages::{commands::*, events::*},
     AccountCategory, Store,
 };
-use aqueous::{Msg, StreamID, WriteMessages};
+use aqueous::{Msg, StreamID, Write};
 use tracing::{info, instrument};
 
 #[instrument(skip_all, target = "account_component")]
@@ -10,7 +10,7 @@ pub async fn handle_deposit(
     deposit: Msg<Deposit>,
     Store(mut store): Store,
     AccountCategory(category): AccountCategory,
-    mut writer: WriteMessages,
+    mut writer: Write,
 ) {
     let stream_id = StreamID::new(deposit.account_id);
     let (account, version) = store
@@ -50,7 +50,7 @@ pub async fn handle_withdraw(
     withdraw: Msg<Withdraw>,
     Store(mut store): Store,
     AccountCategory(category): AccountCategory,
-    mut writer: WriteMessages,
+    mut writer: Write,
 ) {
     let stream_id = StreamID::new(withdraw.account_id);
     let (account, version) = store

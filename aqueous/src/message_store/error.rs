@@ -1,7 +1,7 @@
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum Error {
     #[error("{0}")]
     WrongExpectedVersion(String),
@@ -9,8 +9,8 @@ pub enum Error {
     Database(String),
     #[error("{0}")]
     Pool(String),
-    #[error(transparent)]
-    Other(SqlxError),
+    #[error("{0}")]
+    Other(String),
 }
 
 impl From<SqlxError> for Error {
@@ -22,12 +22,10 @@ impl From<SqlxError> for Error {
                     return Self::WrongExpectedVersion(message.to_string());
                 }
 
-                Self::Database(format!("{}", sqlx_error))
+                Self::Database(sqlx_error.to_string())
             }
-            SqlxError::PoolClosed | SqlxError::PoolTimedOut => {
-                Self::Pool(format!("{}", sqlx_error))
-            }
-            _ => Self::Other(sqlx_error),
+            SqlxError::PoolClosed | SqlxError::PoolTimedOut => Self::Pool(sqlx_error.to_string()),
+            _ => Self::Other(sqlx_error.to_string()),
         }
     }
 }
