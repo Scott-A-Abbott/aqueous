@@ -1,24 +1,24 @@
 use std::sync::{Arc, Mutex};
 
-#[derive(Clone)]
-pub enum UsefulObject<A, S> {
+#[derive(Clone, Debug)]
+pub enum Object<A, S> {
     Actuator(A),
     Substitute(Arc<Mutex<S>>),
 }
 
-impl<A, S> UsefulObject<A, S> {
+impl<A, S> Object<A, S> {
     pub fn substitute(substitute: S) -> Self {
-        let substitute_cell = Mutex::new(substitute);
-        let substitute_rc = Arc::new(substitute_cell);
+        let substitute_mutex = Mutex::new(substitute);
+        let substitute_arc = Arc::new(substitute_mutex);
 
-        Self::Substitute(substitute_rc)
+        Self::Substitute(substitute_arc)
     }
 
     pub fn unwrap_substitute(self) -> S
     where
         S: std::fmt::Debug,
     {
-        let UsefulObject::Substitute(sub) = self else { panic!("Attempted to unwrap a actuator") };
+        let Object::Substitute(sub) = self else { panic!("Attempted to unwrap an actuator") };
         let sub = Arc::try_unwrap(sub).expect("Unwrap substitute");
         sub.into_inner().unwrap()
     }
