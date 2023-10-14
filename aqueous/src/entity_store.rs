@@ -1,4 +1,4 @@
-use crate::{message_store::error::Error as MessageStoreError, *};
+use crate::{get::*, message_store::error::Error as MessageStoreError, *};
 use moka::future::Cache;
 use std::{
     any::{Any, TypeId},
@@ -148,7 +148,7 @@ where
             debug!("Fetched cahced entity at version {}: {:?}", version, entity);
         }
 
-        let current_version = GetStreamVersion::new(self.connection.clone())
+        let current_version = GetVersion::new(self.connection.clone())
             .execute(stream_name.clone())
             .await?;
 
@@ -157,7 +157,7 @@ where
             return Ok((entity, version));
         }
 
-        let messages = GetStreamMessages::new(self.connection.clone())
+        let messages = GetStream::new(self.connection.clone())
             .position(version.0 + 1)
             .execute(stream_name.clone())
             .await?;

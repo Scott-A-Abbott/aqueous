@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{get::*, *};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, marker::PhantomData};
 use thiserror::Error;
@@ -182,7 +182,7 @@ impl<Settings> Consumer<Settings> {
     where
         Settings: Clone,
     {
-        let mut get = GetCategoryMessages::new(connection.clone());
+        let mut get = GetCategory::new(connection.clone());
 
         if let Some(correlation) = self.correlation.as_ref() {
             get.correlation(correlation);
@@ -234,7 +234,7 @@ impl<Settings> Consumer<Settings> {
 
     pub async fn get_position(&mut self, connection: Connection) -> Option<i64> {
         let stream_name = self.position_stream_name();
-        let message_data = GetLastStreamMessage::new(connection.clone())
+        let message_data = GetLast::new(connection.clone())
             .execute(stream_name)
             .await
             .ok()??;
@@ -246,7 +246,7 @@ impl<Settings> Consumer<Settings> {
 }
 
 pub struct Subscription {
-    get: GetCategoryMessages,
+    get: GetCategory,
     poll_interval: Interval,
     position: Option<i64>,
     dispatch_channel: Sender<MessageData>,
@@ -254,7 +254,7 @@ pub struct Subscription {
 
 impl Subscription {
     pub fn new(
-        get: GetCategoryMessages,
+        get: GetCategory,
         poll_interval_millis: u64,
         dispatch_channel: Sender<MessageData>,
     ) -> Self {
