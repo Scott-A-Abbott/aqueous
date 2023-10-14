@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-    let connection = Connection::builder()
-        .build_with_url("postgres://message_store@localhost/message_store")
+    let connection = Connection::
+        connect("postgres://message_store@localhost/message_store")
         .await?;
 
     let mut args: VecDeque<String> = env::args().collect();

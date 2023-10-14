@@ -47,7 +47,7 @@ impl<S> Component<S> {
             let connection = match self.connection.take() {
                 Some(connection) => connection,
                 None => ConnectionBuilder::default()
-                    .build()
+                    .connect()
                     .await
                     .expect("Connecting with default options"),
             };

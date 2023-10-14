@@ -17,6 +17,11 @@ impl Connection {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
+
+    pub async fn connect(url: &str) -> Result<Self, MessageStoreError> {
+        let pool = PgPoolOptions::default().connect(url).await?;
+        Ok(Self::new(pool))
+    }
 }
 
 #[derive(Default)]
@@ -61,13 +66,8 @@ impl ConnectionBuilder {
         self
     }
 
-    pub async fn build(self) -> Result<Connection, MessageStoreError> {
+    pub async fn connect(self) -> Result<Connection, MessageStoreError> {
         let pool = self.pool_options.connect_with(self.connect_options).await?;
-        Ok(Connection::new(pool))
-    }
-
-    pub async fn build_with_url(self, url: &str) -> Result<Connection, MessageStoreError> {
-        let pool = self.pool_options.connect(url).await?;
         Ok(Connection::new(pool))
     }
 }
