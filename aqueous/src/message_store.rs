@@ -1,5 +1,5 @@
 pub mod connection;
-pub mod error;
+pub(crate) mod error;
 
 pub use connection::*;
 use error::Error;
@@ -8,6 +8,8 @@ use crate::*;
 use serde_json::Value;
 use sqlx::Execute;
 use tracing::{debug, instrument, trace};
+
+pub type MessageStoreError = Error;
 
 pub struct GetStreamVersion {
     connection: Connection,
