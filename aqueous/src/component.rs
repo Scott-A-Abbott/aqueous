@@ -1,4 +1,7 @@
-use crate::{Connection, ConnectionBuilder, Consumer};
+use crate::{
+    message_store::{Connection, ConnectionBuilder},
+    Consumer,
+};
 use tokio::task::JoinSet;
 
 pub struct Component<Settings = ()> {

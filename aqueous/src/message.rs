@@ -1,4 +1,4 @@
-use crate::StreamName;
+use crate::stream_name::StreamName;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sqlx::Row;

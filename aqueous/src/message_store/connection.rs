@@ -1,4 +1,4 @@
-use super::error::Error;
+use crate::message_store::Error;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
     PgPool,

@@ -1,4 +1,4 @@
-use crate::{Connection, Message, MessageData, Msg};
+use crate::{message_store::Connection, Message, MessageData, Msg};
 use std::{collections::HashMap, marker::PhantomData, ops::Deref};
 
 pub trait Handler<Settings = ()> {

@@ -1,4 +1,8 @@
-use crate::{get::*, *};
+use crate::{
+    message_store::{get::*, Connection, Error},
+    MessageData, Object,
+    stream_name::StreamName
+};
 
 pub struct Read {
     object: Object<ReadMessages, ReadSubstitute>,
@@ -20,10 +24,7 @@ impl Read {
         self.object.unwrap_substitute()
     }
 
-    pub async fn execute(
-        &mut self,
-        stream_name: impl ToString,
-    ) -> Result<Vec<MessageData>, MessageStoreError> {
+    pub async fn execute(&mut self, stream_name: impl ToString) -> Result<Vec<MessageData>, Error> {
         let stream_name = StreamName::new(stream_name);
 
         use Object::*;
@@ -60,10 +61,7 @@ impl ReadMessages {
         }
     }
 
-    pub async fn execute(
-        &mut self,
-        stream_name: StreamName,
-    ) -> Result<Vec<MessageData>, MessageStoreError> {
+    pub async fn execute(&mut self, stream_name: StreamName) -> Result<Vec<MessageData>, Error> {
         self.options.stream_name = Some(stream_name.clone());
 
         if self.options.last {
@@ -78,7 +76,7 @@ impl ReadMessages {
         self.get_stream().await
     }
 
-    async fn get_last(&mut self) -> Result<Vec<MessageData>, MessageStoreError> {
+    async fn get_last(&mut self) -> Result<Vec<MessageData>, Error> {
         let stream_name = self.options.stream_name.take().unwrap();
 
         let mut get_last = GetLast::new(self.connection.clone());
@@ -97,7 +95,7 @@ impl ReadMessages {
         Ok(messages)
     }
 
-    async fn get_category(&mut self) -> Result<Vec<MessageData>, MessageStoreError> {
+    async fn get_category(&mut self) -> Result<Vec<MessageData>, Error> {
         let mut get_category = GetCategory::new(self.connection.clone());
 
         let position = self.options.position.clone();
@@ -120,7 +118,7 @@ impl ReadMessages {
         get_category.execute(category).await
     }
 
-    async fn get_stream(&mut self) -> Result<Vec<MessageData>, MessageStoreError> {
+    async fn get_stream(&mut self) -> Result<Vec<MessageData>, Error> {
         let mut get_stream = GetStream::new(self.connection.clone());
 
         let position = self.options.position.clone();
@@ -160,16 +158,13 @@ impl ReadMessages {
 
 #[derive(Clone, Debug, Default)]
 pub struct ReadSubstitute {
-    pub error: Option<MessageStoreError>,
+    pub error: Option<Error>,
     pub message_data: Option<MessageData>,
     pub options: ReadOptions,
 }
 
 impl ReadSubstitute {
-    async fn execute(
-        &mut self,
-        stream_name: StreamName,
-    ) -> Result<Vec<MessageData>, MessageStoreError> {
+    async fn execute(&mut self, stream_name: StreamName) -> Result<Vec<MessageData>, Error> {
         let read_options = &mut self.options;
         read_options.stream_name = Some(stream_name);
 

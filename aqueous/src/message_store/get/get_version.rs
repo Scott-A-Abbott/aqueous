@@ -1,5 +1,7 @@
-use crate::*;
-use error::Error;
+use crate::{
+    message_store::{Connection, Error, Version},
+    HandlerParam, stream_name::StreamName
+};
 use sqlx::Execute;
 use tracing::{debug, instrument, trace};
 

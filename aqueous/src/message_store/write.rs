@@ -1,4 +1,8 @@
-use crate::*;
+use crate::{
+    message_store::{Connection, Error, Version},
+    HandlerParam, Message, MessageData, Msg, Object,
+        stream_name::StreamName
+};
 use serde_json::Value;
 use sqlx::Execute;
 use tracing::{instrument, trace};
@@ -72,7 +76,7 @@ impl Write {
         self
     }
 
-    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, MessageStoreError> {
+    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, Error> {
         use Object::*;
         match &mut self.object {
             Actuator(actuator) => actuator.execute(stream_name).await,
@@ -123,7 +127,7 @@ impl WriteMessages {
     }
 
     #[instrument(name = "Write::execute", skip(self), fields(%stream_name))]
-    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, MessageStoreError> {
+    pub async fn execute(&mut self, stream_name: StreamName) -> Result<i64, Error> {
         #[derive(sqlx::FromRow)]
         struct LastPosition(i64);
 
@@ -183,7 +187,7 @@ impl WriteMessages {
 
 #[derive(Clone, Default, Debug)]
 pub struct WriteSubstitute {
-    pub error: Option<MessageStoreError>,
+    pub error: Option<Error>,
     pub options: WriteOptions,
 }
 

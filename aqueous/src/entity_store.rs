@@ -1,10 +1,13 @@
-use crate::{get::*, message_store::error::Error as MessageStoreError, *};
+use crate::{
+    message_store::{error::Error as MessageStoreError, get::*, Connection, Version},
+    stream_name::{Category, StreamID, StreamName},
+    Message, Msg, MessageData
+};
 use moka::future::Cache;
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
     fmt::Debug,
-    fmt::{Display, Formatter},
     marker::PhantomData,
     sync::{Arc, OnceLock},
 };
@@ -12,20 +15,6 @@ use thiserror::Error;
 use tracing::{debug, instrument, trace};
 
 static ENTITY_CACHE: OnceLock<Cache<TypeId, Arc<Box<dyn Any + Send + Sync>>>> = OnceLock::new();
-
-#[derive(Copy, Debug, Clone, Eq, PartialEq)]
-pub struct Version(pub i64);
-impl Version {
-    pub fn initial() -> Self {
-        Self(-1)
-    }
-}
-
-impl Display for Version {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 #[derive(Error, Debug)]
 #[error("A projection that recieves {0} already exists")]
