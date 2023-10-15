@@ -1,5 +1,8 @@
 use crate::{
-    message_store::{get::*, Connection, Error},
+    message_store::{
+        get::{GetCategory, GetLast, GetStream},
+        Connection, Error,
+    },
     stream_name::StreamName,
     MessageData, Object,
 };

@@ -1,7 +1,9 @@
 use crate::{
-    message_store::{error::Error as MessageStoreError, get::*, Connection, Version},
+    message_store::{
+        error::Error as MessageStoreError, get::GetVersion, Connection, Read, Version,
+    },
     stream_name::{Category, StreamID, StreamName},
-    Message, Msg, MessageData
+    Message, MessageData, Msg,
 };
 use moka::future::Cache;
 use std::{
@@ -146,7 +148,7 @@ where
             return Ok((entity, version));
         }
 
-        let messages = GetStream::new(self.connection.clone())
+        let messages = Read::build(self.connection.clone())
             .position(version.0 + 1)
             .execute(stream_name.clone())
             .await?;

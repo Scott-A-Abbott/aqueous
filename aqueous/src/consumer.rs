@@ -1,6 +1,12 @@
 use crate::{
-    handler::*,
-    message_store::{get::*, Connection, Write},
+    handler::{
+        CatchallFunctionHandler, FunctionHandler, Handler, HandlerCollection, IntoCatchallHandler,
+        IntoHandler, IntoHandlerCollection,
+    },
+    message_store::{
+        get::{GetCategory, GetLast},
+        Connection, Write,
+    },
     stream_name::StreamName,
     stream_name::{Category, CategoryType},
     Message, MessageData, Msg,
