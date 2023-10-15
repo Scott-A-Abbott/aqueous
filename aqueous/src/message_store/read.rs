@@ -1,7 +1,7 @@
 use crate::{
     message_store::{get::*, Connection, Error},
+    stream_name::StreamName,
     MessageData, Object,
-    stream_name::StreamName
 };
 
 pub struct Read {
@@ -35,6 +35,95 @@ impl Read {
                 substitute.execute(stream_name).await
             }
         }
+    }
+
+    // pub position: Option<i64>,
+    pub fn position(&mut self, position: i64) -> &mut Self {
+        let position = Some(position);
+
+        use Object::*;
+        match &mut self.object {
+            Actuator(actuator) => actuator.options.position = position,
+            Substitute(substitute) => {
+                let mut substitute = substitute.lock().unwrap();
+                substitute.options.position = position;
+            }
+        }
+
+        self
+    }
+
+    pub fn batch_size(&mut self, batch_size: i64) -> &mut Self {
+        let batch_size = Some(batch_size);
+
+        use Object::*;
+        match &mut self.object {
+            Actuator(actuator) => actuator.options.batch_size = batch_size,
+            Substitute(substitute) => {
+                let mut substitute = substitute.lock().unwrap();
+                substitute.options.batch_size = batch_size;
+            }
+        }
+
+        self
+    }
+
+    pub fn condition(&mut self, condition: &str) -> &mut Self {
+        let condition = Some(condition.to_string());
+
+        use Object::*;
+        match &mut self.object {
+            Actuator(actuator) => actuator.options.condition = condition,
+            Substitute(substitute) => {
+                let mut substitute = substitute.lock().unwrap();
+                substitute.options.condition = condition;
+            }
+        }
+
+        self
+    }
+
+    pub fn message_type(&mut self, message_type: &str) -> &mut Self {
+        let message_type = Some(message_type.to_string());
+
+        use Object::*;
+        match &mut self.object {
+            Actuator(actuator) => actuator.options.message_type = message_type,
+            Substitute(substitute) => {
+                let mut substitute = substitute.lock().unwrap();
+                substitute.options.message_type = message_type;
+            }
+        }
+
+        self
+    }
+
+    pub fn stream_name(&mut self, stream_name: impl ToString) -> &mut Self {
+        let stream_name = Some(StreamName::new(stream_name));
+
+        use Object::*;
+        match &mut self.object {
+            Actuator(actuator) => actuator.options.stream_name = stream_name,
+            Substitute(substitute) => {
+                let mut substitute = substitute.lock().unwrap();
+                substitute.options.stream_name = stream_name;
+            }
+        }
+
+        self
+    }
+
+    pub fn last(&mut self, last: bool) -> &mut Self {
+        use Object::*;
+        match &mut self.object {
+            Actuator(actuator) => actuator.options.last = last,
+            Substitute(substitute) => {
+                let mut substitute = substitute.lock().unwrap();
+                substitute.options.last = last;
+            }
+        }
+
+        self
     }
 }
 
