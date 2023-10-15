@@ -16,7 +16,7 @@ impl GetLast {
         }
     }
 
-    pub fn message_type(mut self, message_type: &str) -> Self {
+    pub fn message_type(&mut self, message_type: &str) -> &mut Self {
         self.message_type = Some(message_type.to_string());
         self
     }
