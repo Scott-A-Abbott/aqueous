@@ -7,7 +7,7 @@ pub mod store;
 pub use account::Account;
 pub use store::Store;
 
-use aqueous::{Category, Connection, HandlerParam};
+use aqueous::{message_store::Connection, stream_name::Category, HandlerParam};
 
 pub struct AccountCategory(pub Category);
 

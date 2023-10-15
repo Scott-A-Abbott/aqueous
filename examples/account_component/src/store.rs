@@ -1,5 +1,5 @@
 use crate::{messages::events::*, Account, AccountCategory};
-use aqueous::{Connection, EntityStore, HandlerParam, Msg};
+use aqueous::{message_store::Connection, EntityStore, HandlerParam, Msg};
 
 pub struct Store(pub EntityStore<Account>);
 

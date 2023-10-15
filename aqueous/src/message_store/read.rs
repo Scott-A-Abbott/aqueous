@@ -35,12 +35,25 @@ impl Read {
             Actuator(actuator) => actuator.execute(stream_name).await,
             Substitute(substitute) => {
                 let mut substitute = substitute.lock().unwrap();
-                substitute.execute(stream_name).await
+                let read_options = &mut substitute.options;
+                read_options.stream_name = Some(stream_name);
+
+                let optional_error = substitute.error.take();
+                let optional_message_data = substitute.message_data.take();
+                match optional_error {
+                    Some(error) => Err(error),
+                    None => {
+                        if let Some(message_data) = optional_message_data {
+                            return Ok(vec![message_data]);
+                        }
+
+                        Ok(Vec::new())
+                    }
+                }
             }
         }
     }
 
-    // pub position: Option<i64>,
     pub fn position(&mut self, position: i64) -> &mut Self {
         let position = Some(position);
 
@@ -253,25 +266,4 @@ pub struct ReadSubstitute {
     pub error: Option<Error>,
     pub message_data: Option<MessageData>,
     pub options: ReadOptions,
-}
-
-impl ReadSubstitute {
-    async fn execute(&mut self, stream_name: StreamName) -> Result<Vec<MessageData>, Error> {
-        let read_options = &mut self.options;
-        read_options.stream_name = Some(stream_name);
-
-        let optional_error = self.error.take();
-        let optional_message_data = self.message_data.take();
-
-        match optional_error {
-            Some(error) => Err(error),
-            None => {
-                if let Some(message_data) = optional_message_data {
-                    return Ok(vec![message_data]);
-                }
-
-                Ok(Vec::new())
-            }
-        }
-    }
 }

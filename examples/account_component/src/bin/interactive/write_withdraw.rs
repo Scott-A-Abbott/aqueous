@@ -1,5 +1,8 @@
 use account_component::{messages::commands::Withdraw, AccountCommandCategory};
-use aqueous::*;
+use aqueous::{
+    message_store::{Connection, Write},
+    stream_name::StreamID,
+};
 use std::{collections::VecDeque, env, error::Error, str::FromStr};
 use time::OffsetDateTime;
 use uuid::Uuid;

@@ -1,5 +1,5 @@
 use account_component::consumers::commands::*;
-use aqueous::{Component, Connection};
+use aqueous::{message_store::Connection, Component};
 use std::error::Error;
 use tracing_subscriber::EnvFilter;
 

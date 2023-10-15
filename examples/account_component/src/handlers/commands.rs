@@ -4,7 +4,11 @@ use crate::{
     messages::{commands::*, events::*},
     AccountCategory, Store, TransactionCategory,
 };
-use aqueous::{MessageStoreError, Msg, StreamID, Write};
+use aqueous::{
+    message_store::{Error as MessageStoreError, Write},
+    stream_name::StreamID,
+    Msg,
+};
 use tracing::{info, instrument};
 
 #[instrument(skip_all, target = "account_component")]
