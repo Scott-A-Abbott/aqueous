@@ -27,10 +27,11 @@ impl Write {
     pub fn expected_version(&mut self, expected_version: Version) -> &mut Self {
         match &mut self.object {
             Object::Actuator(actuator) => {
-                actuator.expected_version = Some(expected_version);
+                actuator.options.expected_version = Some(expected_version);
             }
             Object::Substitute(substitute) => {
-                substitute.lock().unwrap().expected_version = Some(expected_version);
+                let options = &mut substitute.lock().unwrap().options;
+                options.expected_version = Some(expected_version);
             }
         }
 
@@ -46,10 +47,11 @@ impl Write {
 
         match &mut self.object {
             Object::Actuator(actuator) => {
-                actuator.messages.push(msg_data);
+                actuator.options.messages.push(msg_data);
             }
             Object::Substitute(substitute) => {
-                substitute.lock().unwrap().messages.push(msg_data);
+                let options = &mut substitute.lock().unwrap().options;
+                options.messages.push(msg_data);
             }
         }
 
@@ -59,10 +61,11 @@ impl Write {
     pub fn initial(&mut self) -> &mut Self {
         match &mut self.object {
             Object::Actuator(actuator) => {
-                actuator.expected_version = Some(Version::initial());
+                actuator.options.expected_version = Some(Version::initial());
             }
             Object::Substitute(substitute) => {
-                substitute.lock().unwrap().expected_version = Some(Version::initial());
+                let options = &mut substitute.lock().unwrap().options;
+                options.expected_version = Some(Version::initial());
             }
         }
 
@@ -75,12 +78,15 @@ impl Write {
             Actuator(actuator) => actuator.execute(stream_name).await,
             Substitute(substitute) => {
                 let mut substitute = substitute.lock().unwrap();
-                substitute.stream_name = Some(stream_name);
+                let optional_error = substitute.error.take();
+                let options = &mut substitute.options;
 
-                match substitute.error.take() {
-                    Some(err) => Err(err),
+                options.stream_name = Some(stream_name);
+
+                match optional_error {
+                    Some(error) => Err(error),
                     None => {
-                        let position = substitute.messages.len() as i64 - 1;
+                        let position = substitute.options.messages.len() as i64 - 1;
                         Ok(position)
                     }
                 }
@@ -95,19 +101,24 @@ impl<Settings> HandlerParam<Settings> for Write {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct WriteOptions {
+    pub expected_version: Option<Version>,
+    pub messages: Vec<MessageData>,
+    pub stream_name: Option<StreamName>,
+}
+
 #[derive(Clone, Debug)]
 pub struct WriteMessages {
     connection: Connection,
-    expected_version: Option<Version>,
-    messages: Vec<MessageData>,
+    options: WriteOptions,
 }
 
 impl WriteMessages {
     pub fn build(connection: Connection) -> Self {
         Self {
             connection,
-            expected_version: None,
-            messages: Vec::new(),
+            options: WriteOptions::default(),
         }
     }
 
@@ -121,9 +132,13 @@ impl WriteMessages {
 
         let mut transaction = self.connection.begin().await?;
 
-        for message in self.messages.iter() {
+        let messages = &self.options.messages;
+        for message in messages.iter() {
             let id = uuid::Uuid::new_v4();
-            let version = self.expected_version.as_ref().map(|Version(value)| value);
+
+            let expected_version = self.options.expected_version.as_ref();
+            let version = expected_version.map(|Version(value)| value);
+
             let metadata = if message.metadata.is_empty() {
                 Value::Null
             } else {
@@ -154,10 +169,8 @@ impl WriteMessages {
 
             last_position = query.fetch_one(&mut *transaction).await?;
 
-            self.expected_version = self
-                .expected_version
-                .as_mut()
-                .map(|Version(value)| Version(*value + 1));
+            self.options.expected_version =
+                expected_version.map(|Version(value)| Version(*value + 1));
         }
 
         transaction.commit().await?;
@@ -171,9 +184,7 @@ impl WriteMessages {
 #[derive(Clone, Default, Debug)]
 pub struct WriteSubstitute {
     pub error: Option<MessageStoreError>,
-    pub expected_version: Option<Version>,
-    pub messages: Vec<MessageData>,
-    pub stream_name: Option<StreamName>,
+    pub options: WriteOptions,
 }
 
 impl WriteSubstitute {
@@ -181,7 +192,8 @@ impl WriteSubstitute {
     where
         for<'de> M: Message + serde::Deserialize<'de>,
     {
-        self.messages
+        let messages = &self.options.messages;
+        messages
             .iter()
             .find(|message_data| message_data.type_name.as_str() == M::TYPE_NAME)
             .and_then(|message_data| Msg::from_data(message_data.clone()).ok())
@@ -191,7 +203,8 @@ impl WriteSubstitute {
     where
         for<'de> M: Message + serde::Deserialize<'de>,
     {
-        self.messages
+        let messages = &self.options.messages;
+        messages
             .iter()
             .filter(|message_data| message_data.type_name.as_str() == M::TYPE_NAME)
             .filter_map(|message_data| Msg::from_data(message_data.clone()).ok())
