@@ -1,6 +1,7 @@
 use crate::{
     message_store::{Connection, Error},
-    HandlerParam, MessageData, stream_name::Category
+    stream_name::Category,
+    HandlerParam, MessageData,
 };
 use sqlx::Execute;
 use tracing::{instrument, trace};

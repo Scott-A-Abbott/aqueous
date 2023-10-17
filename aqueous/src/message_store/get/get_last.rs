@@ -1,7 +1,7 @@
 use crate::{
     message_store::{Connection, Error},
+    stream_name::StreamName,
     HandlerParam, MessageData,
-    stream_name::StreamName
 };
 use sqlx::Execute;
 use tracing::{instrument, trace};

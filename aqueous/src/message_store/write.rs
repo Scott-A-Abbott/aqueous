@@ -1,7 +1,7 @@
 use crate::{
     message_store::{Connection, Error, Version},
+    stream_name::StreamName,
     HandlerParam, Message, MessageData, Msg, Object,
-        stream_name::StreamName
 };
 use serde_json::Value;
 use sqlx::Execute;

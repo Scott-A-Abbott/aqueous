@@ -2,7 +2,7 @@ use crate::{
     messages::{commands::*, events::*},
     AccountCategory, Store,
 };
-use aqueous::{Msg, stream_name::StreamID, message_store::Write};
+use aqueous::{message_store::Write, stream_name::StreamID, Msg};
 use tracing::{info, instrument};
 
 #[instrument(skip_all, target = "account_component")]

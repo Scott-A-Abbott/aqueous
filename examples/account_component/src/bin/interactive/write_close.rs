@@ -1,7 +1,7 @@
 use account_component::{messages::commands::Close, AccountCommandCategory};
 use aqueous::{
     message_store::{Connection, Write},
-    stream_name::{StreamID,},
+    stream_name::StreamID,
 };
 use std::{collections::VecDeque, env, error::Error, str::FromStr};
 use time::OffsetDateTime;
