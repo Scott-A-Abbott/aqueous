@@ -8,6 +8,8 @@ use std::{
 };
 use time::PrimitiveDateTime;
 
+pub use aqueous_macros::Message;
+
 #[derive(sqlx::FromRow, Serialize, Debug, Clone)]
 pub struct MessageData {
     #[sqlx(rename = "type")]

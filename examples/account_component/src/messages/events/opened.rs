@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::messages::commands::Open;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Message, Serialize, Deserialize, Clone, Debug)]
 pub struct Opened {
     pub account_id: Uuid,
     pub customer_id: Uuid,
@@ -13,10 +13,6 @@ pub struct Opened {
     pub time: OffsetDateTime,
     #[serde(with = "time::serde::iso8601")]
     pub processed_time: OffsetDateTime,
-}
-
-impl Message for Opened {
-    const TYPE_NAME: &'static str = "Opened";
 }
 
 impl From<Open> for Opened {

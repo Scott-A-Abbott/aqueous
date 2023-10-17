@@ -11,5 +11,5 @@ pub use component::Component;
 pub use consumer::Consumer;
 pub use entity_store::EntityStore;
 pub use handler::{Handler, HandlerParam};
-pub use message::*;
+pub use message::{Message, MessageData, Msg};
 pub use object::Object;

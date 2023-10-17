@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Message, Serialize, Deserialize, Clone, Debug)]
 pub struct WithdrawalRejected {
     pub withdrawal_id: Uuid,
     pub account_id: Uuid,
@@ -14,10 +14,6 @@ pub struct WithdrawalRejected {
     #[serde(with = "time::serde::iso8601")]
     pub processed_time: OffsetDateTime,
     pub sequence: i64,
-}
-
-impl Message for WithdrawalRejected {
-    const TYPE_NAME: &'static str = "WithdrawalRejected";
 }
 
 impl From<Withdraw> for WithdrawalRejected {
