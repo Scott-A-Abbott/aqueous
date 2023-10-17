@@ -1,4 +1,4 @@
 [workspace]
-members = ["aqueous", "aqueous_macros", "examples/*"]
+members = ["aqueous", "aqueous-macros", "examples/*"]
 # Only check / build main crates by default (check all with `--workspace`)
-default-members = ["aqueous", "aqueous_macros"]
+default-members = ["aqueous", "aqueous-macros"]
