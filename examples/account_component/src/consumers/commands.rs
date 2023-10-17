@@ -9,7 +9,7 @@ pub struct CommandsConsumer;
 
 impl CommandsConsumer {
     pub fn build() -> Consumer {
-        let AccountCommandCategory(category) = crate::AccountCommandCategory::new();
+        let AccountCommandCategory(category) = AccountCommandCategory::new();
 
         Consumer::new(category)
             .extend_handlers((handle_open, handle_deposit, handle_withdraw, handle_close))

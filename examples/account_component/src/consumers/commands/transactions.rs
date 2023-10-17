@@ -5,7 +5,7 @@ pub struct TransactionsConsumer;
 
 impl TransactionsConsumer {
     pub fn build() -> Consumer {
-        let TransactionCategory(category) = crate::TransactionCategory::new();
+        let TransactionCategory(category) = TransactionCategory::new();
 
         Consumer::new(category)
             .extend_handlers((handle_deposit, handle_withdraw))
