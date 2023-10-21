@@ -11,8 +11,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     tracing::subscriber::set_global_default(subscriber).expect("Set global default subscriber");
 
-    let connection =
-        Connection::connect("postgres://message_store@localhost/message_store").await?;
+    let connection = Connection::builder()
+        .url("postgres://message_store@localhost/message_store")
+        .connect()
+        .await?;
 
     Component::default()
         .with_connection(connection)
