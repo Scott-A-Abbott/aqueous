@@ -11,8 +11,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     tracing::subscriber::set_global_default(subscriber).expect("Set global default subscriber");
 
+    let message_store_url = dotenvy::var("MESSAGE_STORE_URL")?;
     let connection = Connection::builder()
-        .url("postgres://message_store@localhost/message_store")
+        .url(&message_store_url)
         .connect()
         .await?;
 

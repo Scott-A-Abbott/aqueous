@@ -9,8 +9,9 @@ use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
+    let message_store_url = dotenvy::var("MESSAGE_STORE_URL")?;
     let connection = Connection::builder()
-        .url("postgres://message_store@localhost/message_store")
+        .url(&message_store_url)
         .connect()
         .await?;
 
