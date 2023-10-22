@@ -21,8 +21,15 @@ type EntityCache = Cache<TypeId, EntityRef>;
 static ENTITY_CACHE: OnceLock<EntityCache> = OnceLock::new();
 
 #[derive(Error, Debug)]
-#[error("A projection that recieves {0} already exists")]
-pub struct DuplicateProjectionError(String);
+#[error("A projection that recieves {message_type} already exists")]
+pub struct DuplicateProjectionError {
+    message_type: String,
+}
+impl DuplicateProjectionError {
+    pub fn new(message_type: String) -> Self {
+        Self { message_type }
+    }
+}
 
 pub struct EntityStore<Entity> {
     projections: HashMap<String, Box<dyn Projection<Entity> + Send>>,
@@ -89,7 +96,7 @@ where
         let message_type = M::TYPE_NAME.to_string();
 
         if self.projections.contains_key(&message_type) {
-            return Err(DuplicateProjectionError(message_type));
+            return Err(DuplicateProjectionError::new(message_type));
         }
 
         let projection = IntoProjection::into_projection(func);
@@ -108,7 +115,7 @@ where
 
         for (message_type, projection) in projections.into_iter() {
             if self.projections.contains_key(&message_type) {
-                return Err(DuplicateProjectionError(message_type));
+                return Err(DuplicateProjectionError::new(message_type));
             }
 
             self.projections.insert(message_type, projection);
