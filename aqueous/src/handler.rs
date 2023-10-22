@@ -224,7 +224,7 @@ macro_rules! impl_handler {
             S: Clone,
         {
             fn call(&mut self, message_data: MessageData, _connection: Connection, _settings: S) -> bool {
-                if message_data.type_name == $first::TYPE_NAME.to_string() {
+                if &message_data.type_name == $first::TYPE_NAME {
                     let msg: Msg<$first> = Msg::from_data(message_data.clone()).unwrap();
                     $(let $ty = $ty::build(_connection.clone(), _settings.clone());)*
                     tokio::task::block_in_place(move || {

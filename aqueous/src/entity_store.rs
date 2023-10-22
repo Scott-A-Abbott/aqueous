@@ -202,7 +202,7 @@ where
     F: Fn(&mut Entity, Msg<M>),
 {
     fn apply(&self, entity: &mut Entity, message_data: MessageData) {
-        if message_data.type_name == M::TYPE_NAME.to_string() {
+        if &message_data.type_name == M::TYPE_NAME {
             let msg = Msg::<M>::from_data(message_data).unwrap();
             (self.func)(entity, msg);
         }
