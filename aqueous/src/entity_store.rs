@@ -16,9 +16,9 @@ use std::{
 use thiserror::Error;
 use tracing::{debug, instrument, trace};
 
-type EntityRef = Arc<Box<dyn Any + Send + Sync>>;
-type EntityCache = Cache<TypeId, EntityRef>;
-static ENTITY_CACHE: OnceLock<EntityCache> = OnceLock::new();
+type EntityCacheRef = Arc<Box<dyn Any + Send + Sync>>;
+type EntityCaches = Cache<TypeId, EntityCacheRef>;
+static ENTITY_CACHES: OnceLock<EntityCaches> = OnceLock::new();
 
 #[derive(Error, Debug)]
 #[error("A projection that recieves {message_type} already exists")]
@@ -46,8 +46,8 @@ where
     pub fn build(connection: Connection, category: Category) -> Self {
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
-                let entity_cache = ENTITY_CACHE.get_or_init(|| Cache::new(5));
-                let cache_any = entity_cache
+                let entity_caches = ENTITY_CACHES.get_or_init(|| Cache::new(5));
+                let cache_any = entity_caches
                     .get_with(
                         TypeId::of::<Cache<StreamName, (Entity, Version)>>(),
                         async move {
