@@ -16,7 +16,9 @@ use std::{
 use thiserror::Error;
 use tracing::{debug, instrument, trace};
 
-static ENTITY_CACHE: OnceLock<Cache<TypeId, Arc<Box<dyn Any + Send + Sync>>>> = OnceLock::new();
+type EntityRef = Arc<Box<dyn Any + Send + Sync>>;
+type EntityCache = Cache<TypeId, EntityRef>;
+static ENTITY_CACHE: OnceLock<EntityCache> = OnceLock::new();
 
 #[derive(Error, Debug)]
 #[error("A projection that recieves {0} already exists")]
