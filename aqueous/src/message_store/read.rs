@@ -203,12 +203,12 @@ impl ReadMessages {
     async fn get_category(&mut self) -> Result<Vec<MessageData>, Error> {
         let mut get_category = GetCategory::new(self.connection.clone());
 
-        let position = self.options.position.clone();
+        let position = self.options.position;
         if let Some(position) = position {
             get_category.position(position);
         }
 
-        let batch_size = self.options.batch_size.clone();
+        let batch_size = self.options.batch_size;
         if let Some(batch_size) = batch_size {
             get_category.batch_size(batch_size);
         }
@@ -226,12 +226,12 @@ impl ReadMessages {
     async fn get_stream(&mut self) -> Result<Vec<MessageData>, Error> {
         let mut get_stream = GetStream::new(self.connection.clone());
 
-        let position = self.options.position.clone();
+        let position = self.options.position;
         if let Some(position) = position {
             get_stream.position(position);
         }
 
-        let batch_size = self.options.batch_size.clone();
+        let batch_size = self.options.batch_size;
         if let Some(batch_size) = batch_size {
             get_stream.batch_size(batch_size);
         }

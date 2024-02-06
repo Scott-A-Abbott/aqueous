@@ -31,7 +31,7 @@ impl GetVersion {
 
         let StreamVersion { stream_version } = query.fetch_one(&self.connection.pool).await?;
 
-        let version = stream_version.map_or(Version::initial(), |v| Version(v));
+        let version = stream_version.map_or(Version::initial(), Version);
         debug!("Version of stream {} is {}", stream_name, version);
 
         Ok(version)

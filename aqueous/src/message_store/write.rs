@@ -153,12 +153,12 @@ impl WriteMessages {
             let query = sqlx::query_as(
                 "SELECT write_message($1::varchar, $2::varchar, $3::varchar, $4::jsonb, $5::jsonb, $6::bigint);",
             )
-                .bind(id.clone())
+                .bind(id)
                 .bind(stream_name.clone())
                 .bind(&message.type_name)
                 .bind(&message.data)
                 .bind(metadata)
-                .bind(&version);
+                .bind(version);
 
             trace!(
                 "{} [{}, {}, {}, {}, {:?}, {:?}]",

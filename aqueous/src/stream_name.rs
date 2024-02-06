@@ -4,9 +4,9 @@ use std::{
 };
 
 pub mod separator {
-    pub const ID: &'static str = "-";
-    pub const CATEGORY_TYPE: &'static str = ":";
-    pub const COMPOUND: &'static str = "+";
+    pub const ID: &str = "-";
+    pub const CATEGORY_TYPE: &str = ":";
+    pub const COMPOUND: &str = "+";
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -113,7 +113,7 @@ impl StreamID {
 
         stream_id_string
             .split(separator::COMPOUND)
-            .map(|stream_id_str| StreamID::new(stream_id_str))
+            .map(StreamID::new)
             .collect()
     }
 
@@ -279,7 +279,7 @@ impl CategoryType {
 
         category_type_string
             .split(separator::COMPOUND)
-            .map(|category_type_str| CategoryType::new(category_type_str))
+            .map(CategoryType::new)
             .collect()
     }
 

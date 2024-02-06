@@ -41,8 +41,8 @@ impl GetStream {
     #[instrument(name = "GetStream::execute", skip(self), fields(%stream_name))]
     pub async fn execute(&mut self, stream_name: StreamName) -> Result<Vec<MessageData>, Error> {
         let StreamName(stream_name) = stream_name;
-        let position = self.position.unwrap_or_else(|| 0);
-        let batch_size = self.batch_size.unwrap_or_else(|| 1000);
+        let position = self.position.unwrap_or(0);
+        let batch_size = self.batch_size.unwrap_or(1000);
 
         let query = sqlx::query_as(
             "SELECT * from get_stream_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar);",

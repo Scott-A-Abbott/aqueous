@@ -62,8 +62,8 @@ impl GetCategory {
     #[instrument(name = "GetCategory::execute", skip(self), fields(%category))]
     pub async fn execute(&self, category: Category) -> Result<Vec<MessageData>, Error> {
         let Category(category) = category;
-        let position = self.position.unwrap_or_else(|| 0);
-        let batch_size = self.batch_size.unwrap_or_else(|| 1000);
+        let position = self.position.unwrap_or(0);
+        let batch_size = self.batch_size.unwrap_or(1000);
 
         let query = sqlx::query_as(
             "SELECT * FROM get_category_messages($1::varchar, $2::bigint, $3::bigint, $4::varchar, $5::bigint, $6::bigint, $7::varchar);",
@@ -72,8 +72,8 @@ impl GetCategory {
         .bind(position)
         .bind(batch_size)
         .bind(&self.correlation)
-        .bind(&self.consumer_group_member)
-        .bind(&self.consumer_group_size)
+        .bind(self.consumer_group_member)
+        .bind(self.consumer_group_size)
         .bind(&self.condition);
 
         trace!(
