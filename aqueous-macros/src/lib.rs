@@ -4,25 +4,23 @@ use syn::{
     parse::{Parse, ParseStream},
     parse_macro_input,
     token::Comma,
-    Ident, LitInt, Result,
+    DeriveInput, Ident, LitInt, Result,
 };
 
-//## Example of derive macro to be implemented later - Scott, Tue Apr 16 2024
-// #[proc_macro_derive(Message)]
-// pub fn derive(input: TokenStream) -> TokenStream {
-//     let input = parse_macro_input!(input as DeriveInput);
-//     let ident = &input.ident;
-//     let ident_string = ident.to_string();
-//
-//     let tokens = quote! {
-//         impl Message for #ident {
-//             const TYPE_NAME: &'static str = #ident_string;
-//         }
-//     };
-//
-//     TokenStream::from(tokens)
-// }
+#[proc_macro_derive(Message)]
+pub fn derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let ident = &input.ident;
+    let ident_string = ident.to_string();
 
+    let tokens = quote! {
+        impl Message for #ident {
+            const TYPE_NAME: &'static str = #ident_string;
+        }
+    };
+
+    TokenStream::from(tokens)
+}
 
 // Copied from bevy_utils
 struct AllTuples {
