@@ -2,7 +2,7 @@
 name = "account_component"
 version = "0.1.0"
 edition = "2021"
-default-run = "start"
+# default-run = "start"
 
 [dependencies]
 aqueous = { path = "../../aqueous" }
@@ -14,19 +14,3 @@ time = { version = "0.3", features = ["serde", "parsing"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "std"] }
 dotenvy = "0.15"
-
-[[bin]]
-name = "write_open"
-path = "src/bin/interactive/write_open.rs"
-
-[[bin]]
-name = "write_deposit"
-path = "src/bin/interactive/write_deposit.rs"
-
-[[bin]]
-name = "write_withdraw"
-path = "src/bin/interactive/write_withdraw.rs"
-
-[[bin]]
-name = "write_close"
-path = "src/bin/interactive/write_close.rs"
