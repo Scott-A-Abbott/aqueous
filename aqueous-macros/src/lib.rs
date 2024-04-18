@@ -4,7 +4,7 @@ use syn::{
     parse::{Parse, ParseStream},
     parse_macro_input,
     token::Comma,
-    DeriveInput, Ident, LitInt, Result,
+    DeriveInput, Ident, Result,
 };
 
 #[proc_macro_derive(Message)]
@@ -25,20 +25,12 @@ pub fn derive(input: TokenStream) -> TokenStream {
 // Copied from bevy_utils
 struct AllTuples {
     macro_ident: Ident,
-    start: usize,
-    end: usize,
     idents: Vec<Ident>,
 }
 
 impl Parse for AllTuples {
     fn parse(input: ParseStream) -> Result<Self> {
         let macro_ident = input.parse::<Ident>()?;
-        input.parse::<Comma>()?;
-
-        let start = input.parse::<LitInt>()?.base10_parse()?;
-        input.parse::<Comma>()?;
-
-        let end = input.parse::<LitInt>()?.base10_parse()?;
         input.parse::<Comma>()?;
 
         let mut idents = vec![input.parse::<Ident>()?];
@@ -48,8 +40,6 @@ impl Parse for AllTuples {
 
         Ok(AllTuples {
             macro_ident,
-            start,
-            end,
             idents,
         })
     }
@@ -125,7 +115,7 @@ impl Parse for AllTuples {
 #[proc_macro]
 pub fn all_tuples(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as AllTuples);
-    let len = 1 + input.end - input.start;
+    let len: usize = 16;
     let mut ident_tuples = Vec::with_capacity(len);
 
     for i in 0..=len {
@@ -145,7 +135,7 @@ pub fn all_tuples(input: TokenStream) -> TokenStream {
     }
 
     let macro_ident = &input.macro_ident;
-    let invocations = (input.start..=input.end).map(|i| {
+    let invocations = (0..=len).map(|i| {
         let ident_tuples = &ident_tuples[..i];
         quote! {
             #macro_ident!(#(#ident_tuples),*);

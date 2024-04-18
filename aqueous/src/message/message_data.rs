@@ -2,7 +2,7 @@ use super::{Message, Metadata, Msg};
 use serde::Serialize;
 use serde_json::Value;
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct MessageData {
     pub type_name: String,
     pub metadata: Metadata,

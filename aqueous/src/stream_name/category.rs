@@ -1,4 +1,4 @@
-use super::{StreamID, StreamName, separator};
+use super::{separator, StreamID, StreamName};
 use std::{
     collections::VecDeque,
     fmt::{Display, Formatter},

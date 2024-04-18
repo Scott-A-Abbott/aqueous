@@ -3,7 +3,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{Map, Value};
 use time::PrimitiveDateTime;
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Metadata(pub Map<String, Value>);
 
 impl Metadata {
