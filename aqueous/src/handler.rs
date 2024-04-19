@@ -14,6 +14,7 @@ pub trait Handler<C, S> {
     async fn call(&mut self, message_data: MessageData, connection: C, settings: S) -> bool;
 }
 
+#[async_trait]
 pub trait HandlerParam<C, S = ()>: Sized {
-    fn build(connection: C, settings: S) -> Self;
+    async fn build(connection: C, settings: S) -> Self;
 }

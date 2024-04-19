@@ -44,7 +44,7 @@ macro_rules! impl_handler_for_catchall {
             S: Clone + Send + 'static,
         {
             async fn call(&mut self, message_data: MessageData, _connection: C, _settings: S) -> bool {
-                $(let $ty = $ty::build(_connection.clone(), _settings.clone());)*
+                $(let $ty = $ty::build(_connection.clone(), _settings.clone()).await;)*
                 (self.func)(message_data, $($ty,)*).await;
                 true
             }

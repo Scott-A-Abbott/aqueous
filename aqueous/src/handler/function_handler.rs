@@ -36,7 +36,7 @@ macro_rules! impl_handler {
             async fn call(&mut self, message_data: MessageData, _connection: C, _settings: S) -> bool {
                 if &message_data.type_name == M::TYPE_NAME {
                     let msg: Msg<M> = Msg::from_data(message_data.clone()).unwrap();
-                    $(let $ty = $ty::build(_connection.clone(), _settings.clone());)*
+                    $(let $ty = $ty::build(_connection.clone(), _settings.clone()).await;)*
                     (self.func)(msg, $($ty,)*).await;
                     true
                 } else {
