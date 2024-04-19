@@ -1,6 +1,7 @@
 use super::{Handler, HandlerParam};
 use crate::message::{Message, MessageData, Msg};
 use aqueous_macros::all_tuples;
+use async_trait::async_trait;
 use std::marker::PhantomData;
 
 pub struct FunctionHandler<P, R, F> {
@@ -23,7 +24,7 @@ pub trait IntoHandler<P, R, F>: Sized {
 macro_rules! impl_handler {
    ($($ty:ident $(,)?)*) => {
         #[allow(non_snake_case)]
-        #[async_trait::async_trait]
+        #[async_trait]
         impl<M, $($ty,)* F, R, C, S> Handler<C, S> for FunctionHandler<(Msg<M>, $($ty,)*), R, F>
         where
             for<'de> M: Message + serde::Deserialize<'de> + Send,

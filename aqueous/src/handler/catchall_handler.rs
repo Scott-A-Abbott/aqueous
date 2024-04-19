@@ -1,6 +1,7 @@
 use super::{Handler, HandlerParam};
 use crate::message::MessageData;
 use aqueous_macros::all_tuples;
+use async_trait::async_trait;
 use std::marker::PhantomData;
 
 pub struct CatchallFunctionHandler<P, R, F> {
@@ -34,7 +35,7 @@ all_tuples!(impl_into_catchall, T);
 macro_rules! impl_handler_for_catchall {
    ($($ty:ident $(,)?)*) => {
         #[allow(non_snake_case)]
-        #[async_trait::async_trait]
+        #[async_trait]
         impl<$($ty,)* F, R, C, S> Handler<C, S> for CatchallFunctionHandler<(MessageData, $($ty,)*), R, F>
         where
             $($ty: HandlerParam<C, S> + Send,)*
